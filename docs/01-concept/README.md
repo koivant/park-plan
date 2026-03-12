@@ -15,3 +15,7 @@ Subjects:
 3. `marketing.md`
 4. `tracking.md`
 5. `pwa.md`
+
+Notes:
+1. Concept is the primary level for meeting discussions.
+2. If something is unknown, mark it `research needed` or `verification needed`.

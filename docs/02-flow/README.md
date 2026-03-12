@@ -9,3 +9,7 @@ Subjects:
 2. `loyalty.md`
 3. `marketing.md`
 4. `pwa.md`
+
+Notes:
+1. Flow docs describe how each selected concept works in practice.
+2. Keep flow descriptions practical and decision-oriented.

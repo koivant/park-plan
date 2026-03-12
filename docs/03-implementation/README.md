@@ -12,3 +12,7 @@ Subjects:
 2. `loyalty.md`
 3. `marketing.md`
 4. `pwa.md`
+
+Notes:
+1. This level is for execution details, not stakeholder Q&A.
+2. Keep each item actionable and testable.

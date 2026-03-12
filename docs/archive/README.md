@@ -1,6 +1,6 @@
 # Archive
 
-Last updated: 2026-03-05
+Last updated: 2026-03-12
 
 This folder keeps older phase-based and earlier concept documents for reference.
 
@@ -12,3 +12,5 @@ Current active documentation model is:
 1. `docs/01-concept/`
 2. `docs/02-flow/`
 3. `docs/03-implementation/`
+
+Current active subjects are maintained in the level READMEs.
