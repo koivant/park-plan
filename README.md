@@ -10,6 +10,8 @@ Active documentation tree:
    Q&A flow options and selected process paths.
 3. `docs/03-implementation/`  
    Technical implementation steps and investigation items.
+4. `docs/questions/`  
+   Practical questions grouped by entity (visitor, staff, admin).
 
 Current subjects:
 
