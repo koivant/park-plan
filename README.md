@@ -15,8 +15,7 @@ Active documentation tree:
 
 Current subjects:
 
-1. In all 3 levels: `checkout`, `loyalty`, `marketing`, `pwa`.
-2. Concept-only (currently): `tracking`.
+1. `checkout`, `loyalty`, `marketing`, `pwa`, `tracking`.
 
 Reference folders:
 
