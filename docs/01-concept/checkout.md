@@ -1,6 +1,6 @@
 # Checkout (Concept)
 
-Last updated: 2026-03-11
+Last updated: 2026-03-18
 
 Q: Should we create a custom checkout flow?
 A: For current scope, no. ROLLER hosted checkout already supports the needed web flow (overlay/full-page and direct links to product sections/products). Build custom checkout only if you need behavior that hosted checkout cannot provide.
@@ -21,6 +21,58 @@ A: Without custom build, product catalog is presented in ROLLER checkout UI. Fro
 Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
 Source: https://mysupport.roller.software/hc/en-us/articles/5494935998351-Share-your-online-checkout
 
+Q: How are opening hours managed on the website?
+A: In ROLLER, each park (managed venue) maintains its own operating hours. HQ schedules then use park-level operating hours. For website display in WordPress, no native ROLLER->WordPress hours sync is documented in public docs, so website display must be handled through an integration path.
+Source: https://mysupport.roller.software/hc/en-us/articles/6670697201551-Set-up-and-manage-operating-hours
+Source: https://mysupport.roller.software/hc/en-us/articles/7014164748943-Create-and-manage-HQ-schedules
+Source: docs/ops/meetings/2026-03-17-owner-comments.md
+
+Q: What data exactly is hosted in ROLLER?
+A: Core operating data is hosted in ROLLER: products, pricing, schedules, bookings, guest records, waiver records, and membership-related data. ROLLER also has payment and checkout data in its checkout and payments stack.
+Source: https://mysupport.roller.software/hc/en-us/articles/360001653475-Data-API
+Source: https://mysupport.roller.software/hc/en-us/articles/4410621801999-Create-and-add-HQ-products-to-managed-venues
+Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
+Source: https://mysupport.roller.software/hc/en-us/articles/360002185856-Get-started-with-ROLLER-Payments
+
+Q: How can we get ROLLER data to our website?
+A: Two paths are documented. 1) Use ROLLER hosted checkout links (overlay/full-page) for buying flow. 2) Use API integration when you need data outside checkout UI (for example custom website components).
+Source: https://mysupport.roller.software/hc/en-us/articles/5494935998351-Share-your-online-checkout
+Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
+Source: https://mysupport.roller.software/hc/en-us/articles/360001653455-API-overview
+
+Q: How are product names and prices managed for product cards?
+A: Product-related website data is sourced from ROLLER. In checkout UI this is native ROLLER behavior. If product cards are rendered in WordPress pages, they must be fed by ROLLER data integration.
+Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
+Source: https://mysupport.roller.software/hc/en-us/articles/4410621801999-Create-and-share-HQ-products
+Source: docs/ops/meetings/2026-03-17-owner-comments.md
+
+Q: Is ROLLER data global or can each park customize it?
+A: Both. HQ can centralize and publish shared setup (for example products, schedules, checkouts), and each managed park can still handle local setup fields (for example operating hours and some local settings).
+Source: https://mysupport.roller.software/hc/en-us/articles/13574818583823-Get-started-with-HQ
+Source: https://mysupport.roller.software/hc/en-us/articles/4410621801999-Create-and-add-HQ-products-to-managed-venues
+Source: https://mysupport.roller.software/hc/en-us/articles/9681919703567-Create-and-manage-HQ-checkouts
+Source: https://mysupport.roller.software/hc/en-us/articles/7014164748943-Create-and-manage-HQ-schedules
+
+Q: Can one ROLLER setup manage multiple parks with different products, pricing, and currencies?
+A: Yes, using HQ + managed venues. Products and pricing can be managed at HQ and shared to venues. Multi-venue groups can include different currencies, but some HQ features may require matching currency between selected venues.
+Source: https://mysupport.roller.software/hc/en-us/articles/9681919703567-Create-and-manage-HQ-checkouts
+Source: https://mysupport.roller.software/hc/en-us/articles/4410621801999-Create-and-share-HQ-products
+Source: https://mysupport.roller.software/hc/en-us/articles/11149309350671-Get-started-with-price-rules
+Source: https://mysupport.roller.software/hc/en-us/articles/13546297703055-HQ-multi-venue-gift-card-redemption-on-request
+
+Q: Do products and checkout support different currencies?
+A: Yes at venue level. ROLLER supports region-based payment methods and venue currency setup. In multi-venue use, some cross-venue features require same currency between selected venues.
+Source: https://mysupport.roller.software/hc/en-us/articles/360001841316-Add-online-payment-methods-with-ROLLER-Payments
+Source: https://mysupport.roller.software/hc/en-us/articles/13546297703055-HQ-multi-venue-gift-card-redemption-on-request
+
+Q: What ROLLER plan/add-ons are needed for many parks and countries?
+A: Based on public docs: 1) HQ add-on for central multi-park management, 2) ROLLER Payments for progressive checkout and online accounts, and 3) API add-on if you need external integrations (including Patch).
+Source: https://mysupport.roller.software/hc/en-us/articles/13574818583823-Get-started-with-HQ
+Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
+Source: https://mysupport.roller.software/hc/en-us/articles/7382787636879-Sign-in-and-use-online-accounts
+Source: https://mysupport.roller.software/hc/en-us/articles/360001653455-API-overview
+Source: https://mysupport.roller.software/hc/en-us/articles/12557902973839-ROLLER-Patch-Retention
+
 Q: When using ROLLER checkout UI, how much is it possible to customise the UI? Can we add branding, custom themes, colours, etc.?
 A: Yes, to a degree. You can customize branding elements such as logo, background image, button/text colors, and checkout appearance settings. Full component-level redesign is verification needed.
 Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
@@ -32,14 +84,21 @@ Source: https://mysupport.roller.software/hc/en-us/articles/5494935998351-Share-
 Source: https://mysupport.roller.software/hc/en-us/articles/9663642089871-Add-the-full-page-checkout-experience-to-your-website-and-social-pages
 
 Q: Is "select online, pay in venue" checkout option possible and offered by ROLLER?
-A: ROLLER documents this for legacy checkout ("pay later"). For progressive overlay checkout, research needed.
+A: Public docs are inconsistent. One article says "pay later" is legacy checkout only, while another progressive-checkout payment article still mentions the same setting. Final status for overlay checkout is verification needed from ROLLER support.
 Source: https://mysupport.roller.software/hc/en-us/articles/6052170934543-Allow-your-guests-to-book-online-without-paying
+Source: https://mysupport.roller.software/hc/en-us/articles/360001841316-Add-online-payment-methods-with-ROLLER-Payments
 
 Q: Can we categorise products in ROLLER checkout by featured items or some other rules?
 A: Yes. You can group products with sections, categories and tags. You can also highlight products with homepage widgets (for example carousels). Fully automatic featured ranking is research needed.
 Source: https://mysupport.roller.software/hc/en-us/articles/12965544901647
 Source: https://mysupport.roller.software/hc/en-us/articles/360000181395-Create-your-product-categories
 Source: https://mysupport.roller.software/hc/en-us/articles/5517737900687-Create-your-online-checkout
+
+Q: Is it possible to create value packs in ROLLER?
+A: Yes. Use Package products (and Party package products for party use cases) to bundle multiple products into one sellable value pack with package pricing.
+Source: https://mysupport.roller.software/hc/en-us/articles/360000623875-Sell-bundled-products-at-discounted-rates-with-packages
+Source: https://mysupport.roller.software/hc/en-us/articles/360000624195-Create-your-package-products
+Source: https://mysupport.roller.software/hc/en-us/articles/5819701100943-Create-your-party-package-products
 
 Q: What payment options are there?
 A: Payment methods depend on your ROLLER Payments setup and region. You can configure available methods in Venue Manager. "Pay later" (book now, pay later) is documented for legacy checkout.
@@ -70,3 +129,18 @@ Source: https://mysupport.roller.software/hc/en-us/articles/10367792689935-Get-s
 Source: https://mysupport.roller.software/hc/en-us/articles/15193945294479-Create-a-waiver-QR-code-sign-for-fast-check-ins
 Source: https://mysupport.roller.software/hc/en-us/articles/360000069755-Search-for-waivers-at-POS
 Source: https://mysupport.roller.software/hc/en-us/articles/10507797711631-View-and-send-waivers-in-the-Mobile-Check-in-app
+
+Q: How customizable do park forms need to be?
+A: Required scope from owner feedback: conditional field visibility, park-specific products/prices (for example birthday forms), and park-specific notification templates for customer and staff emails. Per-park email differences are supported in ROLLER through venue-level email template and notification settings.
+Source: docs/ops/meetings/2026-03-17-owner-comments.md
+Source: https://mysupport.roller.software/hc/en-us/articles/360000577896-Customize-your-email-templates
+Source: https://mysupport.roller.software/hc/en-us/articles/14394483835535-Enable-or-suppress-specific-ROLLER-generated-emails
+Source: https://mysupport.roller.software/hc/en-us/articles/115001738953-Add-your-key-venue-settings
+Source: https://mysupport.roller.software/hc/en-us/articles/360000577916-Receive-emails-for-new-bookings
+
+Q: Can customer and staff notification emails be different per park?
+A: Yes. Email templates and booking-notification addresses are venue-level settings, so each park can have different customer and staff emails even in an HQ model.
+Source: https://mysupport.roller.software/hc/en-us/articles/360000577896-Customize-your-email-templates
+Source: https://mysupport.roller.software/hc/en-us/articles/14394483835535-Enable-or-suppress-specific-ROLLER-generated-emails
+Source: https://mysupport.roller.software/hc/en-us/articles/115001738953-Add-your-key-venue-settings
+Source: https://mysupport.roller.software/hc/en-us/articles/360000577916-Receive-emails-for-new-bookings

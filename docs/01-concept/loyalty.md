@@ -1,6 +1,6 @@
 # Loyalty (Concept)
 
-Last updated: 2026-03-12
+Last updated: 2026-03-18
 
 Q: Is a custom stamp mechanism viable?
 A: For ROLLER-only, verification needed. Public docs clearly show membership benefits and redemption, but they do not clearly document a native "collect visits/stamps, then auto-reward" flow in current public material.
@@ -8,7 +8,7 @@ Source: https://mysupport.roller.software/hc/en-us/sections/5460757524239-Member
 Source: docs/ops/meetings/2026-03-03-roller-support-update.md
 
 Q: Should we wait for ROLLER's own points implementation?
-A: It is one valid option, but timeline and scope are verification needed. Internal support note says target is May 2026 and details were expected in March 2026.
+A: It is one valid option, but timeline and scope are still verification needed. We have an internal support note saying target was May 2026, but public feature documentation is still not published.
 Source: docs/ops/meetings/2026-03-03-roller-support-update.md
 
 Q: Should we get Patch Retention or some other similar service to implement stamps?
@@ -42,9 +42,27 @@ Source: https://mysupport.roller.software/hc/en-us/sections/5460757524239-Member
 Source: docs/ops/meetings/2026-03-03-roller-support-update.md
 
 Q: What can be used as loyalty account key?
-A: Email and mobile phone are supported as core identifiers. Online accounts also support social account sign-in. WhatsApp as a direct account key is research needed.
+A: Email and mobile phone are supported as sign-in/account identifiers in online accounts. Social sign-in is also supported. WhatsApp as a direct account key is still research needed.
 Source: https://mysupport.roller.software/hc/en-us/articles/7382787636879-Sign-in-and-use-online-accounts
-Source: https://mysupport.roller.software/hc/en-us/articles/360000086056-Create-and-manage-bookings-from-Venue-Manager
+
+Q: In phone-first markets, is phone login supported?
+A: Yes. ROLLER online accounts support sign-in with mobile/cell number and one-time code login.
+Source: https://mysupport.roller.software/hc/en-us/articles/7382787636879-Sign-in-and-use-online-accounts
+
+Q: When is native ROLLER loyalty expected and what features will it include?
+A: Public release timing and final feature scope are research needed. Current public docs confirm memberships and membership redemption, but not a full native points/stamp program spec.
+Source: https://mysupport.roller.software/hc/en-us/sections/5460757524239-Memberships
+Source: docs/ops/meetings/2026-03-03-roller-support-update.md
+
+Q: Are there published examples of Patch loyalty in attractions?
+A: Yes. Patch and ROLLER publish integration material, and Patch case studies show loyalty usage in attraction-style venues. Note: published examples mostly describe spend-based rewards, not a strict stamp mechanic.
+Source: https://mysupport.roller.software/hc/en-us/articles/12557902973839-ROLLER-Patch-Retention
+Source: https://www.roller.software/integrations/partner/patch-retention
+Source: https://patchretention.com/blog/x-golf-case-study-patch-offers-everything-we-need-in-one-platform
+
+Q: If we later move loyalty from Patch to native ROLLER loyalty, how do we migrate?
+A: A full migration method is not documented publicly yet. The documented action today is that Patch can be disconnected by resetting the API key. Data migration mapping/rules between systems is research needed.
+Source: https://mysupport.roller.software/hc/en-us/articles/12557902973839-ROLLER-Patch-Retention
 
 Q: How do clients connect their purchases to ROLLER?
 A: Purchases connect when the sale is made in ROLLER channels (for example online checkout, POS, Venue Manager, self-serve kiosk, or API), and the booking holder is identified with guest details such as email or phone.
@@ -86,7 +104,7 @@ Source: https://mysupport.roller.software/hc/en-us/articles/9681919703567-Create
 Source: https://help.patchretention.com/how-to-setup-the-patch-roller-integration
 
 Q: Do we need a separate account for ROLLER and PATCH for each park or is there one common account for all parks?
-A: ROLLER credentials are usually venue-scoped, and HQ can also use multi-venue credentials where enabled. Patch supports multi-location setups, but per-location configuration is still needed. Final account structure for your tenancy is research needed.
+A: ROLLER supports one HQ setup managing many park venues. Day-to-day operations stay venue-scoped, and HQ can use multi-venue access where enabled. Patch supports multi-location, but park-level configuration is still needed per location.
 Source: https://mysupport.roller.software/hc/en-us/articles/9681919703567-Create-and-manage-HQ-checkouts
 Source: https://mysupport.roller.software/hc/en-us/articles/360001653455-API-overview
 Source: https://help.patchretention.com/how-to-set-up-the-roller-abandoned-cart-automation
