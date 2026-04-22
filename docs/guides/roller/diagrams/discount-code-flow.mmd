@@ -1,0 +1,42 @@
+sequenceDiagram
+  autonumber
+  actor C as Customer
+  participant R as ROLLER
+  participant P as PATCH
+  participant A as Loyalty App API
+  participant DB as Loyalty App Database
+  participant V as Loyalty Web View
+
+  R->>P: Booking sync updates contact loyalty field
+  P->>P: Check loyalty field against cap
+
+  alt Loyalty cap reached and no active voucher
+    P->>P: Generate one-time free-pass code
+    P->>P: Save contact custom fields<br/>{"loyalty_field":voucher_code,"code":"SPK-123","isActive":true}
+    P->>R: POST /discounts/{discountId}/codes<br/>{"code":"SPK-123","isActive":true}
+    R-->>P: 201 Created<br/>{"code":"SPK-123","isActive":true}
+
+    alt PATCH automation delivers code
+      P-->>A: POST /webhooks/patch/reward-code<br/>{"contactId":"...","email":"...","rollerCustomerId":"...","code":"SPK-123","isActive":true}
+      A->>DB: Resolve customerKey<br/>{"patchContactId":"...","rollerCustomerId":"...","email":"value"}
+      A->>DB: Upsert voucher by customerKey
+    else Loyalty app fetches code from PATCH
+      V->>A: GET /account
+      A->>P: GET /v2/contacts?email={customerEmail}
+      P-->>A: 200 OK<br/>{"contactId":"...","email":"...","customFields":{"loyalty_field":voucher_code,"code":"SPK-123","isActive":true,"roller_customer_id":"..."}}
+      A->>DB: Resolve customerKey<br/>{"patchContactId":"...","rollerCustomerId":"...","email":"value"}
+      A->>DB: Upsert voucher by customerKey
+    end
+
+    A-->>V: 200 OK<br/>{"loyalty_field":voucher_code,"code":"SPK-123","isActive":true}
+    V-->>C: Show free-pass code
+  end
+
+  C->>R: Apply free-pass code at checkout
+  R->>R: Validate code value and one-time status
+  R-->>C: Checkout accepted (100% discount)
+  R-->>A: POST /webhooks/roller/booking<br/>{"bookingId":"...","customerId":"...","email":"...","discount":{"code":"SPK-123"}}
+  A->>DB: Match voucher by customerKey + voucher_code
+  A->>DB: Mark voucher acquired/used by customerKey
+  R->>P: Update loyalty/reward fields after redemption
+  P-->>A: POST /webhooks/patch/contact-updated

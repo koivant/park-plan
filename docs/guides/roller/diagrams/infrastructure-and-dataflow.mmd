@@ -1,0 +1,52 @@
+flowchart LR
+  subgraph Entry[Customer Channels]
+    SITE[Website]
+    VIEW["Loyalty View (Web or PWA)"]
+    CHECKOUT[ROLLER Checkout]
+    EXT["External Events (CRUD)"]
+    GATE[Park Entry Scanner]
+  end
+
+  subgraph GCP[GCP Services]
+    FE[Frontend Cloud Run]
+    API[Backend API Cloud Run]
+    QUEUE[Webhook Queue]
+    WORKER[Projection Worker]
+    CACHE[(Redis Cache Memorystore)]
+    DB[(PostgreSQL Cloud SQL)]
+    SEC[Secret Manager]
+    LOG[Cloud Logging]
+  end
+
+  subgraph Providers[External Providers]
+    R[ROLLER]
+    P[PATCH]
+  end
+
+  SITE -->|Open loyalty page| VIEW
+  VIEW -->|Manual refresh requests| FE
+  FE --> API
+  API --> FE
+  FE -->|Account response| VIEW
+
+  API <--> CACHE
+  API --> DB
+  API --> SEC
+  FE --> LOG
+  API --> LOG
+
+  API -->|Store webhook event| QUEUE
+  QUEUE --> WORKER
+  WORKER -->|Update loyalty projection| DB
+  WORKER --> LOG
+  WORKER -.->|"Optional: GET /v2/contacts?updatedSince=..."| P
+  WORKER -.->|"Optional: GET /v2/contacts (includes voucher field)"| P
+
+  CHECKOUT -->|Booking lifecycle events| R
+  EXT -->|Create booking / Edit booking / Delete booking events| R
+  GATE -->|Ticket redemption events| R
+  R -->|POST /webhooks/roller/*| API
+  R -->|Update loyalty field on purchase/edit/cancel| P
+  P -->|Create one-time voucher and sync to ROLLER| R
+  P -->|POST /webhooks/patch/contact-updated| API
+  P -->|"POST /webhooks/patch/reward-code (automation)"| API
