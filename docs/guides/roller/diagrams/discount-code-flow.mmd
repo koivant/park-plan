@@ -7,36 +7,50 @@ sequenceDiagram
   participant DB as Loyalty App Database
   participant V as Loyalty Web View
 
-  R->>P: Booking sync updates contact loyalty field
-  P->>P: Check loyalty field against cap
+  R->>P: Automation sync: Send purchase or booking change for loyalty calculation
+  P->>P: Stamp update: Add stamps from the booking quantity (including large purchases)
+  P->>P: Reward check: Calculate how many reward thresholds were crossed
 
-  alt Loyalty cap reached and no active voucher
-    P->>P: Generate one-time free-pass code
-    P->>P: Save contact custom fields<br/>{"loyalty_field":voucher_code,"code":"SPK-123","isActive":true}
-    P->>R: POST /discounts/{discountId}/codes<br/>{"code":"SPK-123","isActive":true}
-    R-->>P: 201 Created<br/>{"code":"SPK-123","isActive":true}
-
-    alt PATCH automation delivers code
-      P-->>A: POST /webhooks/patch/reward-code<br/>{"contactId":"...","email":"...","rollerCustomerId":"...","code":"SPK-123","isActive":true}
-      A->>DB: Resolve customerKey<br/>{"patchContactId":"...","rollerCustomerId":"...","email":"value"}
-      A->>DB: Upsert voucher by customerKey
-    else Loyalty app fetches code from PATCH
-      V->>A: GET /account
-      A->>P: GET /v2/contacts?email={customerEmail}
-      P-->>A: 200 OK<br/>{"contactId":"...","email":"...","customFields":{"loyalty_field":voucher_code,"code":"SPK-123","isActive":true,"roller_customer_id":"..."}}
-      A->>DB: Resolve customerKey<br/>{"patchContactId":"...","rollerCustomerId":"...","email":"value"}
-      A->>DB: Upsert voucher by customerKey
+  alt One or more rewards unlocked
+    loop For each unlocked reward
+      P->>P: Code generation: Create unique one-time free-pass code
+      P->>P: Contact update: Append new code to contact code field array
+      P->>R: Code registration: Register code in ROLLER without customer ownership
     end
-
-    A-->>V: 200 OK<br/>{"loyalty_field":voucher_code,"code":"SPK-123","isActive":true}
-    V-->>C: Show free-pass code
+    P-->>A: Reward update: POST /webhooks/patch/reward-code
+    A->>DB: Code save: Store active code list for this loyalty account
   end
 
-  C->>R: Apply free-pass code at checkout
-  R->>R: Validate code value and one-time status
-  R-->>C: Checkout accepted (100% discount)
-  R-->>A: POST /webhooks/roller/booking<br/>{"bookingId":"...","customerId":"...","email":"...","discount":{"code":"SPK-123"}}
-  A->>DB: Match voucher by customerKey + voucher_code
-  A->>DB: Mark voucher acquired/used by customerKey
-  R->>P: Update loyalty/reward fields after redemption
-  P-->>A: POST /webhooks/patch/contact-updated
+  C->>V: View action: Open loyalty page
+  V->>A: Account request: GET /account
+  A->>DB: Account read: Load loyalty status and active code list
+  A-->>V: Account response: Return loyalty status and available code list
+  V-->>C: Customer view: Show loyalty status and available free-pass codes
+
+  C->>R: Checkout action: Apply a free-pass code
+  R->>R: Validation rule: Verify code is active and unused
+  R->>R: One-time rule: Invalidate code after successful use
+  R-->>C: Checkout result: Apply 100% discount when valid
+
+  Note over R,P: ROLLER does not notify PATCH when a code is used.
+
+  loop Scheduled verification automation
+    P->>R: Usage check: Query ROLLER Data API checkout data for used codes
+    R-->>P: Usage result: Return code usage status snapshot
+    P->>P: Contact update: Mark used codes in contact data
+    P-->>A: Status update: POST /webhooks/patch/contact-updated
+    A->>DB: Used-code save: Add used codes to invalidation list
+  end
+
+  alt Booking is canceled or edited later
+    R->>P: Automation sync: Send cancellation or edit change
+    P->>P: Loyalty correction: Recalculate loyalty counter and reward state
+    P-->>A: Loyalty correction: POST /webhooks/patch/contact-updated
+    A->>DB: State correction: Save corrected loyalty and code state
+  end
+
+  C->>V: Refresh action: Refresh loyalty page
+  V->>A: Account request: GET /account
+  A->>DB: Account read: Load latest loyalty and used-code state
+  A-->>V: Account response: Return updated loyalty and code status
+  V-->>C: Customer view: Show latest rewards and used-code status

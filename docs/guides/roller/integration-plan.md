@@ -3,6 +3,7 @@
 ## Scope
 - Build a standalone app that serves account UI and backend APIs.
 - Features: account info, booking/waiver visibility, loyalty status.
+- Free-pass discount code is always one-time use.
 - WordPress only links users to this app.
 - PWA scope is only the loyalty app.
 - No self-service profile editing in app scope.
@@ -25,6 +26,12 @@
 - Secrets: `Secret Manager`.
 - Scheduler: `Cloud Scheduler` for reconciliation.
 
+## Local Sandbox Validation
+- Use Docker Compose for local app, database, and scheduler.
+- Use ngrok to expose local HTTPS webhook endpoints to ROLLER and PATCH sandboxes.
+- Keep env vars aligned with GCP Secret Manager names where practical.
+- Validate sandbox flows locally before deploying the same app image to Cloud Run.
+
 ## Data Model
 - ROLLER: account, bookings, waivers, visit events.
 - PATCH: loyalty summary custom fields and reward state on contacts.
@@ -45,11 +52,11 @@
   - Operationally, ROLLER data syncs into PATCH in the native integration.
   - App should treat PATCH as source for loyalty summary and voucher code, with manual refresh in customer view.
 - Discount code for 100% park access:
-  - Preferred: PATCH creates a one-time free-pass code when loyalty reaches threshold.
-  - PATCH syncs the one-time code to ROLLER for checkout validation.
+  - Preferred: PATCH creates a free-pass code when loyalty reaches threshold.
+  - PATCH syncs the code to ROLLER for checkout validation.
   - Loyalty app receives the code from PATCH via automation webhook or PATCH custom field read.
   - Store code metadata and state in local DB; validate/redeem in ROLLER checkout.
-  - Alternative: if single-use code lifecycle is complex, use a fixed reward product + server-side entitlement check.
+  - Alternative: if code lifecycle is complex, use a fixed reward product + server-side entitlement check.
 - GDPR concerns for non-GDPR countries:
   - Main issue is transfer/legal basis, not country label alone.
   - If processing targets EU establishments or EU data subjects, GDPR obligations apply ([GDPR text](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679), [EDPB territorial scope guidance](https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-32018-territorial-scope-gdpr-article-3-version_nb)).
@@ -65,12 +72,13 @@
 ## Remaining Unknowns
 - Final PATCH field keys and account-level naming.
 - Final child-to-parent stamp roll-up policy per park.
-- Final discount expiry and reuse policy per market.
+- Final discount expiry policy per market.
 
 ## Delivery Steps
 1. Implement OTP login/session and identity map.
 2. Implement ROLLER webhook ingestion and idempotent event store.
 3. Build projection pipeline and account UI read model.
 4. Integrate PATCH contact fetch for loyalty summary custom field.
-5. Add cache and scheduler-based reconciliation.
-6. Pilot validation in Glasgow: login, bookings, waivers, loyalty status, discount visibility.
+5. Add ngrok-based sandbox webhook validation.
+6. Add cache and scheduler-based reconciliation.
+7. Pilot validation in Glasgow: login, bookings, waivers, loyalty status, discount visibility.

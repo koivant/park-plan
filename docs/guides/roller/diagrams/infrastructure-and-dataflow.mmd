@@ -4,16 +4,13 @@ flowchart LR
     VIEW["Loyalty View (Web or PWA)"]
     CHECKOUT[ROLLER Checkout]
     EXT["External Events (CRUD)"]
-    GATE[Park Entry Scanner]
   end
 
   subgraph GCP[GCP Services]
     FE[Frontend Cloud Run]
     API[Backend API Cloud Run]
-    QUEUE[Webhook Queue]
-    WORKER[Projection Worker]
-    CACHE[(Redis Cache Memorystore)]
     DB[(PostgreSQL Cloud SQL)]
+    SCHED[Cloud Scheduler]
     SEC[Secret Manager]
     LOG[Cloud Logging]
   end
@@ -24,29 +21,26 @@ flowchart LR
   end
 
   SITE -->|Open loyalty page| VIEW
-  VIEW -->|Manual refresh requests| FE
+  VIEW -->|Manual refresh request| FE
   FE --> API
-  API --> FE
-  FE -->|Account response| VIEW
-
-  API <--> CACHE
   API --> DB
   API --> SEC
   FE --> LOG
   API --> LOG
 
-  API -->|Store webhook event| QUEUE
-  QUEUE --> WORKER
-  WORKER -->|Update loyalty projection| DB
-  WORKER --> LOG
-  WORKER -.->|"Optional: GET /v2/contacts?updatedSince=..."| P
-  WORKER -.->|"Optional: GET /v2/contacts (includes voucher field)"| P
-
-  CHECKOUT -->|Booking lifecycle events| R
-  EXT -->|Create booking / Edit booking / Delete booking events| R
-  GATE -->|Ticket redemption events| R
-  R -->|POST /webhooks/roller/*| API
-  R -->|Update loyalty field on purchase/edit/cancel| P
-  P -->|Create one-time voucher and sync to ROLLER| R
+  CHECKOUT -->|Purchase or code redemption| R
+  EXT -->|Create, update, cancel booking| R
+  R -->|Automation sync for loyalty updates| P
   P -->|POST /webhooks/patch/contact-updated| API
-  P -->|"POST /webhooks/patch/reward-code (automation)"| API
+  P -->|POST /webhooks/patch/reward-code| API
+  API -->|Store loyalty snapshot and active code array| DB
+  API -->|Store used-code invalidation list| DB
+
+  SCHED -->|Run verification job| API
+  API -->|Trigger code usage check automation| P
+  P -->|Query checkout usage data| R
+  R -->|Return usage state| P
+  P -->|POST /webhooks/patch/contact-updated| API
+
+  API -->|GET /account response| FE
+  FE -->|Show loyalty and code status| VIEW

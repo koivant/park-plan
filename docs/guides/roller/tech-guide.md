@@ -13,6 +13,13 @@
 - Cache: Memorystore Redis.
 - Scheduling: Cloud Scheduler.
 - Secrets: Secret Manager.
+- Local sandbox tunnel: ngrok.
+
+## Local Sandbox Setup
+- Run the app, database, and scheduler with Docker Compose.
+- Expose local webhook endpoints through ngrok for ROLLER and PATCH sandbox callbacks.
+- Use sandbox credentials in local environment variables.
+- Deploy the same app image to Cloud Run after local flow validation.
 
 ## Integration Pattern
 - Webhook-first processing from ROLLER.

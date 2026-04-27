@@ -12,84 +12,50 @@ sequenceDiagram
   opt External create source
     EXT->>R: Create booking event
   end
-  R-->>API: POST /webhooks/roller/booking (Created)
-  R->>P: Update loyalty field (purchase/edit)
-  API->>DB: Save booking event
-  alt Booking has child tickets linked to parent account
-    P-->>API: POST /webhooks/patch/contact-updated (parent loyalty incremented by child stamps)
-  else Standard booking
-    P-->>API: POST /webhooks/patch/contact-updated (customer loyalty incremented)
+  R->>P: Automation sync: Send purchase data for loyalty update
+  P-->>API: POST /webhooks/patch/contact-updated
+  API->>DB: Save loyalty snapshot
+
+  P->>P: Stamp logic: Count all tickets in booking (large orders included)
+  alt Loyalty target reached
+    P->>P: Reward logic: Generate one or more unique one-time codes
+    P->>P: Contact save: Append codes to contact code array
+    P->>R: Code sync: Register codes for checkout validation
+    P-->>API: POST /webhooks/patch/reward-code
+    API->>DB: Save available code list
   end
-  API->>DB: Save PATCH loyalty snapshot
 
   U->>VIEW: Open loyalty view
   VIEW->>API: GET /account
-  API->>DB: Read loyalty and reward state
-  API-->>VIEW: Return updated loyalty status
-  VIEW-->>U: Show loyalty progress
+  API->>DB: Read loyalty and code state
+  API-->>VIEW: Return loyalty status and code list
+  VIEW-->>U: Show loyalty progress and available codes
 
-  opt Optional secondary sync mode (not fallback)
-    API->>P: GET /v2/contacts?updatedSince={timestamp}
-    API->>DB: Reconcile PATCH loyalty snapshot
+  U->>R: Use a free-pass code at checkout
+  R->>R: Validate code is active and unused
+  R->>R: Invalidate code after successful use
+  R-->>U: Apply discount
+
+  loop Scheduled verification automation
+    P->>R: Query checkout data for code usage (ROLLER Data API)
+    R-->>P: Return usage status for checked codes
+    P-->>API: POST /webhooks/patch/contact-updated
+    API->>DB: Add used codes to invalidation list
+  end
+
+  alt External booking is edited or canceled
+    EXT->>R: Update or delete booking event
+    R->>P: Automation sync: Send booking change
+    P-->>API: POST /webhooks/patch/contact-updated
+    API->>DB: Save corrected loyalty and code state
   end
 
   alt Webhook processing fails
-    API->>DB: Log failed webhook event only (no retry)
+    API->>DB: Log failed webhook only (no retry)
   end
 
-  alt Loyalty target reached
-    P->>R: Create one-time free-pass code
-    alt PATCH automation webhook delivery
-      P-->>API: POST /webhooks/patch/reward-code
-      API->>DB: Save one-time free-pass code as available
-    else PATCH custom-field delivery
-      API->>P: GET /v2/contacts?email={customerEmail}
-      API->>DB: Save one-time free-pass code from PATCH custom field
-    end
-    API->>DB: Apply counter reset rule (if enabled by park policy)
-    VIEW-->>U: Show free pass code
-  else Not yet at required amount
-    VIEW-->>U: Show remaining points
-  end
-
-  alt External booking is edited
-    EXT->>R: Update booking event
-    R-->>API: POST /webhooks/roller/booking (Updated)
-    R->>P: Update loyalty field (edit)
-    API->>DB: Update booking state and loyalty state
-    P-->>API: POST /webhooks/patch/contact-updated (loyalty recalculated)
-    U->>VIEW: Refresh loyalty view
-    VIEW->>API: GET /account
-    API-->>VIEW: Return updated booking and loyalty status
-  end
-
-  alt External booking is deleted
-    EXT->>R: Delete booking event
-    R-->>API: POST /webhooks/roller/booking (Cancelled)
-    R->>P: Update loyalty field (delete)
-    API->>DB: Update booking state and loyalty state
-    P-->>API: POST /webhooks/patch/contact-updated (loyalty recalculated)
-    U->>VIEW: Refresh loyalty view
-    VIEW->>API: GET /account
-    API-->>VIEW: Return updated booking and loyalty status
-  end
-
-  U->>R: Use free pass code at checkout
-  R-->>API: POST /webhooks/roller/booking (Created or Updated)
-  API->>DB: Mark reward booking as acquired
-
-  U->>R: Redeem ticket at park entry
-  R-->>API: POST /webhooks/roller/redemption (Created)
-  API->>DB: Mark reward as used
-  alt Reset policy
-    R->>P: Update loyalty field (counter = 0)
-    P-->>API: POST /webhooks/patch/contact-updated
-    API->>DB: Save reset PATCH loyalty snapshot
-  else Rolling policy
-    R->>P: Update loyalty field (counter reduced)
-    P-->>API: POST /webhooks/patch/contact-updated
-    API->>DB: Save rolled PATCH loyalty snapshot
-  end
   U->>VIEW: Refresh loyalty view
   VIEW->>API: GET /account
-  API-->>VIEW: Return reward used status
+  API->>DB: Read latest snapshot
+  API-->>VIEW: Return updated loyalty and code status
+  VIEW-->>U: Show latest status
