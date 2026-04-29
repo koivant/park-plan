@@ -1,0 +1,1019 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Loyalty Demo API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Check API and database health.",
+        "responses": {
+          "200": {
+            "description": "API is healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "databaseTime": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/otp/request": {
+      "post": {
+        "summary": "Create an email OTP.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "demoOtp": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/otp/verify": {
+      "post": {
+        "summary": "Verify an email OTP.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "email",
+                  "otp"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "sessionToken": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "sessionToken"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email or OTP is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "OTP is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account": {
+      "get": {
+        "summary": "Read the loyalty account state for an email.",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "loyalty_points": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "loyalty_target": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": {}
+                    },
+                    "upcoming_bookings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "bookingId": {
+                            "type": "string"
+                          },
+                          "venue": {
+                            "type": "string"
+                          },
+                          "startsAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "ticketCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "additionalProperties": {}
+                      }
+                    },
+                    "waivers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "waiverId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "signedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "documentUrl": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": {}
+                      }
+                    },
+                    "discount_codes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "issuedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "usedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "status"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "email",
+                    "loyalty_points",
+                    "loyalty_target",
+                    "profile",
+                    "upcoming_bookings",
+                    "waivers",
+                    "discount_codes"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/patch/contact-updated": {
+      "post": {
+        "summary": "Consume a PATCH contact update webhook.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "patchContactId": {},
+                  "loyaltyPoints": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "loyaltyTarget": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Webhook payload is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/patch/reward-code": {
+      "post": {
+        "summary": "Consume a PATCH reward code webhook.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "patchContactId": {},
+                  "code": {},
+                  "codes": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Webhook payload is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/roller/booking": {
+      "post": {
+        "summary": "Consume a ROLLER booking webhook and acknowledge non-retryable payload issues.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "sendDate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Booking"
+                    ]
+                  },
+                  "eventType": {
+                    "type": "string",
+                    "enum": [
+                      "Created",
+                      "Updated",
+                      "Cancelled",
+                      "Deleted"
+                    ]
+                  },
+                  "eventDate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "bookingReference": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        ]
+                      },
+                      "uniqueId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "customerId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        ]
+                      },
+                      "email": {
+                        "type": "string"
+                      },
+                      "firstName": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lastName": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "phone": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "venue": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "startsAt": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "ticketCount": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "status": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "bookingDate": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sessionStartTime": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sessionEndTime": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "quantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "bookingDate": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "sessionStartTime": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "sessionEndTime": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "additionalProperties": {}
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "id",
+                  "sendDate",
+                  "type",
+                  "eventType",
+                  "eventDate",
+                  "data"
+                ],
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/roller/signed-waiver": {
+      "post": {
+        "summary": "Consume a ROLLER signed waiver webhook and acknowledge non-retryable payload issues.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "sendDate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "SignedWaiver"
+                    ]
+                  },
+                  "eventType": {
+                    "type": "string",
+                    "enum": [
+                      "Created",
+                      "Updated",
+                      "Cancelled",
+                      "Deleted"
+                    ]
+                  },
+                  "eventDate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "data": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "signedWaiverId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          ]
+                        },
+                        "parentSignedWaiverId": {
+                          "nullable": true,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          ]
+                        },
+                        "waiverId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          ]
+                        },
+                        "firstName": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "lastName": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "guestId": {
+                          "nullable": true,
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          ]
+                        },
+                        "dateOfBirth": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "contactNumber": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "isForMinor": {
+                          "type": "boolean"
+                        },
+                        "expiryDate": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "isValid": {
+                          "nullable": true,
+                          "type": "boolean"
+                        },
+                        "createdDate": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "signedWaiverId",
+                        "waiverId"
+                      ],
+                      "additionalProperties": {}
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "sendDate",
+                  "type",
+                  "eventType",
+                  "eventDate",
+                  "data"
+                ],
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

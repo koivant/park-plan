@@ -1,0 +1,74 @@
+sequenceDiagram
+  autonumber
+  actor U as Customer
+  participant R as ROLLER
+  participant P as PATCH
+  participant API as Loyalty App API
+  participant DB as App Database
+  participant VIEW as Website or PWA
+  participant EXT as External Events (CRUD)
+
+  U->>R: Buy park pass
+  opt External create source
+    EXT->>R: Create booking event
+  end
+
+  R-->>API: Checkout webhook: Send booking, ticket, and waiver data
+  API->>DB: Source save: Store booking, ticket, and waiver payloads
+
+  R->>P: Automation sync: Send purchase or booking change
+  P->>P: Stamp update: Add stamps from booking quantity
+  P->>P: Reward check: Calculate crossed reward thresholds
+  P-->>API: Loyalty update: POST /webhooks/patch/contact-updated
+  API->>DB: Save loyalty snapshot
+
+  alt One or more rewards unlocked
+    loop For each unlocked reward
+      P->>P: Code generation: Create unique one-time free-pass code
+      P->>P: Contact save: Append code to contact code array
+      P->>R: Code sync: Register code for checkout validation
+    end
+    P-->>API: Reward update: POST /webhooks/patch/reward-code
+    API->>DB: Save active code list
+  end
+
+  U->>VIEW: Open loyalty view
+  VIEW->>API: Account request: GET /account
+  API->>DB: Account read: Load contact profile, stamps, bookings, waivers, and active code list
+  API-->>VIEW: Account response: Return name, contact info, stamp count, upcoming bookings, waiver status, and rewards
+  VIEW-->>U: Customer view: Show account details, stamps, upcoming bookings, waiver status or document link, and rewards
+
+  U->>R: Checkout action: Apply free-pass code
+  R->>R: Validation rule: Verify code is active and unused
+  R->>R: One-time rule: Invalidate code after successful use
+  R-->>U: Checkout result: Apply discount when valid
+
+  Note over R,P: ROLLER does not notify PATCH when a code is used.
+
+  loop Scheduled verification automation
+    P->>R: Usage check: Query ROLLER Data API checkout data
+    R-->>P: Usage result: Return code usage status
+    P->>P: Contact update: Mark used codes in contact data
+    P-->>API: Status update: POST /webhooks/patch/contact-updated
+    API->>DB: Used-code save: Add used codes to invalidation list
+  end
+
+  alt Booking is edited or canceled later
+    EXT->>R: Update or cancel booking event
+    R-->>API: Booking webhook: Send updated booking, ticket, and waiver data
+    API->>DB: Source update: Store latest booking state
+    R->>P: Automation sync: Send booking change
+    P->>P: Loyalty correction: Recalculate counter and reward state
+    P-->>API: Loyalty correction: POST /webhooks/patch/contact-updated
+    API->>DB: State correction: Save corrected loyalty and code state
+  end
+
+  alt Webhook processing fails
+    API->>DB: Failure log: Store failed webhook only
+  end
+
+  U->>VIEW: Refresh loyalty view
+  VIEW->>API: Account request: GET /account
+  API->>DB: Account read: Load latest account projection
+  API-->>VIEW: Account response: Return updated profile, stamps, bookings, waiver, and code status
+  VIEW-->>U: Customer view: Show latest account, booking, waiver, and reward state

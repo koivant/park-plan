@@ -27,6 +27,11 @@ Documentation rules for this repo:
   - Do not assume ROLLER Payments as global default.
   - Frame payment selection as a country-by-country decision.
 - General execution rules:
+  - Use test-driven development for developed code:
+    - Add or update a failing test that defines the expected behavior before changing implementation code.
+    - Then implement the smallest change needed to pass the test.
+    - Run the relevant test or check and report the result.
+    - For pure documentation/content-only edits, this does not apply unless the edit affects generated or validated artifacts.
   - Follow requested structure exactly (row/column orientation, file name, delimiter, section layout).
   - Separate template creation from content population:
     - If user asks to create/format a table or CSV structure, do not auto-populate values unless explicitly asked.

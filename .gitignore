@@ -1,1 +1,4 @@
 /scrum-board/
+node_modules/
+dist/
+.env

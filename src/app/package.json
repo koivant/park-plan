@@ -1,0 +1,35 @@
+{
+  "name": "loyalty-demo-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "bootstrap:roller-webhooks": "tsx scripts/bootstrap-roller-webhooks.ts",
+    "check:roller-webhooks": "tsx scripts/check-roller-webhooks.ts",
+    "docs:api": "tsx scripts/generate-openapi.ts",
+    "docs:api:check": "tsx scripts/generate-openapi.ts --check",
+    "scheduler": "tsx watch scheduler.ts",
+    "test": "vitest run tests",
+    "test:api": "vitest run tests/api.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.12.2",
+    "@types/pg": "^8.20.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  }
+}

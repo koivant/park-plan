@@ -1,0 +1,39 @@
+flowchart LR
+  subgraph Entry[Customer and Event Sources]
+    SITE[Website]
+    VIEW["Loyalty View (Web or PWA)"]
+    CHECKOUT[ROLLER Checkout]
+    EXT["External Events (CRUD)"]
+  end
+
+  subgraph GCP[GCP Services]
+    FE[Frontend Cloud Run]
+    API[Backend API Cloud Run]
+    DB[(PostgreSQL Cloud SQL)]
+    SCHED[Cloud Scheduler]
+    SEC[Secret Manager]
+    LOG[Cloud Logging]
+  end
+
+  subgraph Providers[External Providers]
+    R[ROLLER]
+    P[PATCH]
+  end
+
+  SITE -->|Open loyalty page| VIEW
+  VIEW -->|Manual refresh| FE
+  FE -->|GET /account: profile, stamps, bookings, waivers| API
+  API -->|Read/write merged account projection| DB
+  API -->|Read credentials| SEC
+  FE --> LOG
+  API --> LOG
+
+  CHECKOUT -->|Purchase and code redemption| R
+  EXT -->|Create, update, cancel booking| R
+  R -->|Checkout webhook: booking, tickets, waivers| API
+  R -->|Automation sync| P
+  P -->|PATCH webhooks| API
+
+  SCHED -->|Verification trigger| API
+  API -->|Start usage check| P
+  P -->|Query usage state| R
