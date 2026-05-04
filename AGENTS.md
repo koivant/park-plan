@@ -20,6 +20,10 @@ Documentation rules for this repo:
 - Country list handling:
   - Keep country names in `docs/data/countries.txt` as source of truth.
   - Do not repeat full country lists in QA/guides/runbooks/AI docs; reference the source file.
+- Config values handling:
+  - Keep config-like business values in a single values file per topic area.
+  - Avoid duplicating numeric constants across docs.
+  - In docs/diagrams, prefer generic wording (for example `threshold`) and reference the values file for concrete numbers.
 - AI doc path handling:
   - In `docs/ai`, avoid exact file paths.
   - When referencing files, use approximate location wording (for example: "in the data folder").

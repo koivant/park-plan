@@ -38,7 +38,7 @@
 - Store idempotent webhook events and update a local read model.
 - Use ROLLER REST API for webhook bootstrap and any targeted live repair call that needs a specific booking or waiver.
 - Assume ROLLER updates PATCH loyalty field on purchase/edit/cancel events.
-- Assume PATCH creates one-time free-pass codes at loyalty threshold and syncs them to ROLLER validation.
+- Assume PATCH creates one-time free-pass codes when loyalty reaches threshold, then syncs them to ROLLER validation.
 - Loyalty app consumes PATCH webhook updates and stores local read model snapshots.
 - Deliver free-pass code to loyalty app via PATCH automation webhook (`POST /webhooks/patch/reward-code`) or by reading PATCH custom field on account fetch.
 - If PATCH supports outbound webhooks, consume those as the primary PATCH-to-app sync path.

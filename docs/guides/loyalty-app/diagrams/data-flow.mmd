@@ -18,7 +18,7 @@ sequenceDiagram
 
   R->>P: Automation sync: Send purchase or booking change
   P->>P: Stamp update: Add stamps from booking quantity
-  P->>P: Reward check: Calculate crossed reward thresholds
+  P->>P: Reward check: Unlock code when stamp threshold is reached
   P-->>API: Loyalty update: POST /webhooks/patch/contact-updated
   API->>DB: Save loyalty snapshot
 

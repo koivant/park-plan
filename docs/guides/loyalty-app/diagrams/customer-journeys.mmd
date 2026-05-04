@@ -33,7 +33,7 @@ sequenceDiagram
   R-->>API: Checkout webhook: Send booking, ticket, and waiver data
   R->>P: Automation sync: Send booking update for loyalty calculation
   P->>P: Stamp update: Add stamps from ticket quantity (single large order can max loyalty)
-  P->>P: Reward check: Create one or more unique codes when thresholds are reached
+  P->>P: Reward check: Unlock code when stamp threshold is reached
   P-->>API: Loyalty update: POST /webhooks/patch/contact-updated
   U->>VIEW: Manual refresh: Refresh loyalty page
   VIEW->>API: Account load: GET /account

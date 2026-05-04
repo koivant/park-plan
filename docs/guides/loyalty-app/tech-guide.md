@@ -29,7 +29,7 @@
 - No REST fallback path for failed webhooks in pilot.
 - Failed webhook jobs are logged only in pilot (no automatic retries).
 - ROLLER updates PATCH loyalty field on purchase, edit, and cancel events.
-- PATCH creates one-time free-pass code when loyalty target is reached.
+- PATCH creates one-time free-pass code when loyalty reaches threshold.
 - PATCH syncs the one-time code to ROLLER for next-checkout validation.
 - Code delivery to loyalty app is either PATCH automation webhook or PATCH custom-field read on `GET /account`.
 - PATCH webhook ingestion as primary PATCH-to-app sync path (if supported by PATCH).
