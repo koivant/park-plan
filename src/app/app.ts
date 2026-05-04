@@ -21,7 +21,7 @@ export function createApp(options: CreateAppOptions = {}): express.Application {
   app.use(createRequestLoggingMiddleware());
 
   registerCoreRoutes({ app, db, config, now, randomOtp, randomUUID });
-  registerPatchWebhookRoutes({ app, db });
+  registerPatchWebhookRoutes({ app, db, patchWebhookAuthApiKey: config.patchWebhookAuthApiKey });
   registerRollerWebhookRoutes({ app, db, now });
   app.use(errorHandler);
 

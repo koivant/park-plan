@@ -7,14 +7,20 @@ import { recordWebhook, upsertCustomer } from "../../services/customer-store.js"
 interface RegisterPatchWebhookRoutesOptions {
   app: express.Application;
   db: Queryable;
+  patchWebhookAuthApiKey?: string;
 }
 
 /** Registers inbound PATCH webhook endpoints. */
 export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOptions): void {
-  const { app, db } = options;
+  const { app, db, patchWebhookAuthApiKey } = options;
 
   app.post("/webhooks/patch/contact-updated", async (req, res, next) => {
     try {
+      if (!isAuthorizedPatchWebhookRequest(req, patchWebhookAuthApiKey)) {
+        res.status(401).json({ error: "unauthorized" });
+        return;
+      }
+
       const body = patchContactUpdatedBodySchema.safeParse(req.body);
       if (!body.success) {
         res.status(400).json({ error: "invalid_payload" });
@@ -49,6 +55,11 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
 
   app.post("/webhooks/patch/reward-code", async (req, res, next) => {
     try {
+      if (!isAuthorizedPatchWebhookRequest(req, patchWebhookAuthApiKey)) {
+        res.status(401).json({ error: "unauthorized" });
+        return;
+      }
+
       const body = patchRewardCodeBodySchema.safeParse(req.body);
       if (!body.success) {
         res.status(400).json({ error: "invalid_payload" });
@@ -82,4 +93,32 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
       next(error);
     }
   });
+}
+
+function isAuthorizedPatchWebhookRequest(req: express.Request, expectedApiKey: string | undefined): boolean {
+  if (!expectedApiKey) {
+    return true;
+  }
+
+  const xApiKey = req.header("x-api-key");
+  if (typeof xApiKey === "string" && xApiKey === expectedApiKey) {
+    return true;
+  }
+
+  const patchApiKey = req.header("x-patch-webhook-api-key");
+  if (typeof patchApiKey === "string" && patchApiKey === expectedApiKey) {
+    return true;
+  }
+
+  const authorization = req.header("authorization");
+  if (typeof authorization === "string") {
+    const bearerPrefix = "bearer ";
+    if (authorization.toLowerCase().startsWith(bearerPrefix)) {
+      return authorization.slice(bearerPrefix.length).trim() === expectedApiKey;
+    }
+
+    return authorization.trim() === expectedApiKey;
+  }
+
+  return false;
 }

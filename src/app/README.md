@@ -28,6 +28,12 @@ cd src/app
 npm install
 ```
 
+## Implementation Tracking
+
+- Keep the loyalty-app implementation TODO document in guides up to date at all times.
+- Treat it as the source of truth for completed and remaining implementation work.
+- Keep the loyalty-app implementation values document in guides as the source of truth for config-like business values.
+
 ## Run
 
 Use Node `v24`.

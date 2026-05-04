@@ -77,6 +77,7 @@ const routes: RouteDoc[] = [
     requestBody: patchContactUpdatedBodySchema,
     responses: {
       202: { description: "Webhook accepted.", schema: acceptedResponseSchema },
+      401: { description: "Webhook auth failed.", schema: errorResponseSchema },
       400: { description: "Webhook payload is invalid.", schema: errorResponseSchema },
       500: { description: "Unexpected server error.", schema: errorResponseSchema }
     }
@@ -88,6 +89,7 @@ const routes: RouteDoc[] = [
     requestBody: patchRewardCodeBodySchema,
     responses: {
       202: { description: "Webhook accepted.", schema: acceptedResponseSchema },
+      401: { description: "Webhook auth failed.", schema: errorResponseSchema },
       400: { description: "Webhook payload is invalid.", schema: errorResponseSchema },
       500: { description: "Unexpected server error.", schema: errorResponseSchema }
     }

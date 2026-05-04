@@ -68,6 +68,19 @@ export async function loadAccountProjection(db: Queryable, customerId: string): 
   };
 }
 
+/** Finds a customer id owning a projected booking id. */
+export async function findCustomerIdByBookingId(db: Queryable, bookingId: string): Promise<string | undefined> {
+  const result = await db.query<{ customer_id: string }>(
+    `select customer_id
+     from account_projection
+     where bookings_json @> jsonb_build_array(jsonb_build_object('bookingId', $1))
+     limit 1`,
+    [bookingId]
+  );
+
+  return result.rows[0]?.customer_id;
+}
+
 /** Saves the mutable account projection aggregates for a customer. */
 export async function saveAccountProjection(
   db: Queryable,

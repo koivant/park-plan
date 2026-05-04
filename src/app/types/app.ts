@@ -4,6 +4,7 @@ import type { Queryable } from "./database.js";
 export interface AppConfig {
   nodeEnv: string;
   otpTtlSeconds: number;
+  patchWebhookAuthApiKey?: string;
 }
 
 /** Dependency overrides used by tests and local bootstrapping. */

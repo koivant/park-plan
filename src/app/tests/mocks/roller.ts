@@ -22,6 +22,7 @@ export const rollerBookingWebhookPayload = {
     uniqueId: "booking-1",
     customerId: 123456,
     email: "USER@example.com",
+    customerFlags: ["LOYALTY_ENROLLMENT_ALLOWED"],
     firstName: "Taylor",
     lastName: "Example",
     phone: "+358401234567",
@@ -67,6 +68,7 @@ export const bookingWebhookForFailurePayload = {
 export const normalizedRollerBooking = {
   bookingId: "booking-1",
   rollerCustomerId: "123456",
+  loyaltyEnrollmentAllowed: true,
   email: "user@example.com",
   firstName: "Taylor",
   lastName: "Example",

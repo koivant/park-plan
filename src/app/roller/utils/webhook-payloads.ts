@@ -12,6 +12,7 @@ export function normalizeRollerBookingPayload(payload: RollerBookingPayload): No
   return {
     bookingId: String(payload.uniqueId ?? payload.bookingReference),
     rollerCustomerId: stringOrUndefined(payload.customerId),
+    loyaltyEnrollmentAllowed: getLoyaltyEnrollmentAllowed(payload),
     email: typeof payload.email === "string" ? payload.email.trim().toLowerCase() : undefined,
     firstName: stringOrUndefined(payload.firstName),
     lastName: stringOrUndefined(payload.lastName),
@@ -92,4 +93,67 @@ function normalizeBookingItems(value: unknown): Record<string, unknown>[] {
   }
 
   return [];
+}
+
+function getLoyaltyEnrollmentAllowed(payload: RollerBookingPayload): boolean | undefined {
+  for (const key of [
+    "loyaltyEnrollmentAllowed",
+    "loyaltyEnrolmentAllowed",
+    "enrollInLoyalty",
+    "enrolInLoyalty",
+    "joinLoyalty",
+    "joinedLoyalty",
+    "loyaltyOptIn",
+    "loyaltyOptedIn"
+  ]) {
+    const value = payload[key as keyof RollerBookingPayload];
+    if (typeof value === "boolean") {
+      return value;
+    }
+  }
+
+  const customerFlags = Array.isArray(payload.customerFlags) ? payload.customerFlags : [];
+  if (customerFlags.length === 0) {
+    return undefined;
+  }
+
+  const normalizedFlags = customerFlags
+    .filter((flag): flag is string => typeof flag === "string")
+    .map(normalizeLoyaltyFlag);
+
+  if (
+    normalizedFlags.some((flag) =>
+      [
+        "loyalty_enrollment_allowed",
+        "loyalty_enrolment_allowed",
+        "loyalty_opt_in",
+        "loyalty_opted_in",
+        "joined_loyalty",
+        "enrolled_in_loyalty",
+        "enrolment_allowed"
+      ].includes(flag)
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedFlags.some((flag) =>
+      [
+        "loyalty_enrollment_denied",
+        "loyalty_enrolment_denied",
+        "loyalty_opt_out",
+        "loyalty_opted_out",
+        "do_not_enroll_loyalty"
+      ].includes(flag)
+    )
+  ) {
+    return false;
+  }
+
+  return undefined;
+}
+
+function normalizeLoyaltyFlag(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
 }

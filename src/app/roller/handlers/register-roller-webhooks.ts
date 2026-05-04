@@ -1,6 +1,6 @@
 import type express from "express";
-import { loadAccountProjection, mergeProfile, saveAccountProjection } from "../../services/account-store.js";
-import { recordWebhook, upsertCustomer } from "../../services/customer-store.js";
+import { findCustomerIdByBookingId, loadAccountProjection, mergeProfile, saveAccountProjection } from "../../services/account-store.js";
+import { findCustomerIdByEmail, recordWebhook, upsertCustomer } from "../../services/customer-store.js";
 import type { Queryable } from "../../types/database.js";
 import { upsertByKey } from "../../utils/collections.js";
 import { stringOrUndefined } from "../../utils/primitives.js";
@@ -33,31 +33,49 @@ export function registerRollerWebhookRoutes(options: RegisterRollerWebhookRoutes
 
       await recordWebhook(db, "roller.booking", body.data);
       const booking = normalizeRollerBookingPayload(body.data.data);
-      if (!booking.email) {
-        res.status(202).json({ ok: true });
-        return;
+      let customerId: string | undefined;
+      if (booking.email) {
+        const existingCustomerId = await findCustomerIdByEmail(db, booking.email);
+        if (!existingCustomerId && booking.loyaltyEnrollmentAllowed !== true) {
+          console.info({
+            type: "roller_booking_contact_sync_skipped",
+            route: "/webhooks/roller/booking",
+            bookingId: booking.bookingId,
+            reason: "loyalty_enrollment_not_allowed"
+          });
+          res.status(202).json({ ok: true });
+          return;
+        }
+
+        customerId = await upsertCustomer(db, {
+          email: booking.email,
+          rollerCustomerId: booking.rollerCustomerId
+        });
+      } else {
+        customerId = await findCustomerIdByBookingId(db, booking.bookingId);
+        if (!customerId) {
+          console.info({
+            type: "roller_booking_contact_sync_skipped",
+            route: "/webhooks/roller/booking",
+            bookingId: booking.bookingId,
+            reason: "no_email_and_unknown_booking"
+          });
+          res.status(202).json({ ok: true });
+          return;
+        }
       }
 
-      const customerId = await upsertCustomer(db, {
-        email: booking.email,
-        rollerCustomerId: booking.rollerCustomerId
-      });
-
       const projection = await loadAccountProjection(db, customerId);
-      const profile = mergeProfile(projection.profile, {
-        email: booking.email,
-        firstName: booking.firstName,
-        lastName: booking.lastName,
-        name: booking.name,
-        phone: booking.phone
-      });
-      const bookings = upsertByKey(projection.upcomingBookings, "bookingId", {
-        bookingId: booking.bookingId,
-        venue: booking.venue,
-        startsAt: booking.startsAt,
-        ticketCount: booking.ticketCount,
-        status: booking.status
-      });
+      const profile = booking.email
+        ? mergeProfile(projection.profile, {
+            email: booking.email,
+            firstName: booking.firstName,
+            lastName: booking.lastName,
+            name: booking.name,
+            phone: booking.phone
+          })
+        : projection.profile;
+      const bookings = upsertByKey(projection.upcomingBookings, "bookingId", buildBookingProjectionUpdate(booking, body.data.eventType));
 
       await saveAccountProjection(db, customerId, profile, bookings, projection.waivers, now());
       console.info({
@@ -112,4 +130,44 @@ export function registerRollerWebhookRoutes(options: RegisterRollerWebhookRoutes
       next(error);
     }
   });
+}
+
+function buildBookingProjectionUpdate(
+  booking: ReturnType<typeof normalizeRollerBookingPayload>,
+  eventType: "Created" | "Updated" | "Cancelled" | "Deleted"
+): Record<string, unknown> {
+  const next: Record<string, unknown> = {
+    bookingId: booking.bookingId
+  };
+
+  if (booking.venue) {
+    next.venue = booking.venue;
+  }
+
+  if (booking.startsAt) {
+    next.startsAt = booking.startsAt;
+  }
+
+  if (booking.ticketCount != null) {
+    next.ticketCount = booking.ticketCount;
+  }
+
+  const status = booking.status ?? getStatusFromEventType(eventType);
+  if (status) {
+    next.status = status;
+  }
+
+  return next;
+}
+
+function getStatusFromEventType(eventType: "Created" | "Updated" | "Cancelled" | "Deleted"): string | undefined {
+  if (eventType === "Cancelled") {
+    return "cancelled";
+  }
+
+  if (eventType === "Deleted") {
+    return "deleted";
+  }
+
+  return undefined;
 }

@@ -5,6 +5,19 @@ export async function recordWebhook(db: Queryable, type: string, payload: unknow
   await db.query("insert into webhook_events (type, payload) values ($1, $2)", [type, payload]);
 }
 
+/** Finds a customer id by normalized email. */
+export async function findCustomerIdByEmail(db: Queryable, email: string): Promise<string | undefined> {
+  const result = await db.query<{ id: string }>(
+    `select id
+     from customers
+     where email = $1
+     limit 1`,
+    [email]
+  );
+
+  return result.rows[0]?.id;
+}
+
 /** Upserts a customer row and returns the internal customer id. */
 export async function upsertCustomer(db: Queryable, refs: CustomerRefs): Promise<string> {
   const result = await db.query<{ id: string }>(

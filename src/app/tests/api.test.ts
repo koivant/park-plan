@@ -348,6 +348,48 @@ describe("API endpoints", () => {
     expect(db.calls[2].params?.slice(0, 3)).toEqual(["customer-id", 4, 10]);
   });
 
+  it("POST /webhooks/patch/contact-updated rejects unauthorized requests when webhook auth key is configured", async () => {
+    const db = createDb(() => createResult());
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600, patchWebhookAuthApiKey: "patch-secret" }
+    });
+
+    const response = await request(app).post("/webhooks/patch/contact-updated").send({
+      ...patchContactUpdatedPayload
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "unauthorized" });
+    expect(db.calls).toHaveLength(0);
+  });
+
+  it("POST /webhooks/patch/reward-code accepts x-api-key when webhook auth key is configured", async () => {
+    const db = createDb((text) => {
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600, patchWebhookAuthApiKey: "patch-secret" }
+    });
+
+    const response = await request(app)
+      .post("/webhooks/patch/reward-code")
+      .set("x-api-key", "patch-secret")
+      .send({
+        ...patchRewardCodeWebhookPayload
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(4);
+    expect(db.calls[0].params?.[0]).toBe("patch.reward_code");
+  });
+
   it("POST /webhooks/patch/reward-code records codes for a customer", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
@@ -395,18 +437,19 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(4);
+    expect(db.calls).toHaveLength(5);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
-    expect(db.calls[1].params).toEqual(["user@example.com", null, "123456"]);
-    expect(db.calls[3].params?.[0]).toBe("customer-id");
-    expect(db.calls[3].params?.[1]).toEqual({
+    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(db.calls[2].params).toEqual(["user@example.com", null, "123456"]);
+    expect(db.calls[4].params?.[0]).toBe("customer-id");
+    expect(db.calls[4].params?.[1]).toEqual({
       email: "user@example.com",
       firstName: "Taylor",
       lastName: "Example",
       name: "Taylor Example",
       phone: "+358401234567"
     });
-    expect(db.calls[3].params?.[2]).toEqual([
+    expect(db.calls[4].params?.[2]).toEqual([
       {
         ...existingBookingProjection
       },
@@ -448,7 +491,7 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(4);
+    expect(db.calls).toHaveLength(5);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
   });
 
@@ -483,8 +526,86 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(4);
+    expect(db.calls).toHaveLength(5);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
+  });
+
+  it("POST /webhooks/roller/booking skips contact sync when enrollment is not allowed and customer does not exist", async () => {
+    const db = createDb(() => createResult());
+    const app = createApp({ db });
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const response = await request(app).post("/webhooks/roller/booking").send({
+      ...rollerBookingWebhookPayload,
+      data: {
+        ...rollerBookingWebhookPayload.data,
+        customerFlags: []
+      }
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(2);
+    expect(db.calls[0].params?.[0]).toBe("roller.booking");
+    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(consoleInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "roller_booking_contact_sync_skipped",
+        route: "/webhooks/roller/booking",
+        bookingId: "booking-1",
+        reason: "loyalty_enrollment_not_allowed"
+      })
+    );
+
+    consoleInfo.mockRestore();
+  });
+
+  it("POST /webhooks/roller/booking syncs follow-up contact details when customer already exists", async () => {
+    const db = createDb((text) => {
+      if (text.includes("from customers")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      if (text.includes("returning id")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      if (text.includes("from account_projection")) {
+        return createResult([
+          {
+            profile_json: { email: "user@example.com", firstName: "Old" },
+            bookings_json: [],
+            waivers_json: []
+          }
+        ]);
+      }
+
+      return createResult();
+    });
+    const app = createApp({ db });
+
+    const response = await request(app).post("/webhooks/roller/booking").send({
+      ...rollerBookingWebhookPayload,
+      data: {
+        ...rollerBookingWebhookPayload.data,
+        customerFlags: []
+      }
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(5);
+    expect(db.calls[0].params?.[0]).toBe("roller.booking");
+    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(db.calls[2].params).toEqual(["user@example.com", null, "123456"]);
+    expect(db.calls[4].params?.[0]).toBe("existing-customer-id");
+    expect(db.calls[4].params?.[1]).toEqual(
+      expect.objectContaining({
+        email: "user@example.com",
+        firstName: "Taylor",
+        lastName: "Example"
+      })
+    );
   });
 
   it("POST /webhooks/roller/booking logs a processed event after persistence", async () => {
@@ -572,8 +693,65 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(1);
+    expect(db.calls).toHaveLength(2);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
+  });
+
+  it("POST /webhooks/roller/booking updates an existing booking for cancellation without email", async () => {
+    const db = createDb((text) => {
+      if (text.includes("where bookings_json @>")) {
+        return createResult([{ customer_id: "customer-id" }], 1);
+      }
+
+      if (text.includes("from account_projection")) {
+        return createResult([
+          {
+            profile_json: {
+              email: "user@example.com",
+              firstName: "Taylor",
+              lastName: "Example"
+            },
+            bookings_json: [
+              {
+                bookingId: "booking-1",
+                venue: "SuperPark Vantaa",
+                startsAt: "2026-05-02T10:00:00.000Z",
+                ticketCount: 3,
+                status: "confirmed"
+              }
+            ],
+            waivers_json: []
+          }
+        ]);
+      }
+
+      return createResult();
+    });
+    const app = createApp({ db });
+
+    const response = await request(app).post("/webhooks/roller/booking").send({
+      ...existingAccountProjectionRow.bookingWithoutEmailWebhook,
+      eventType: "Cancelled",
+      data: {
+        ...existingAccountProjectionRow.bookingWithoutEmailWebhook.data,
+        status: "Cancelled"
+      }
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(4);
+    expect(db.calls[0].params?.[0]).toBe("roller.booking");
+    expect(db.calls[1].params).toEqual(["booking-1"]);
+    expect(db.calls[3].params?.[2]).toEqual([
+      {
+        bookingId: "booking-1",
+        venue: "SuperPark Vantaa",
+        startsAt: "2026-05-02T10:00:00.000Z",
+        ticketCount: 3,
+        status: "Cancelled"
+      }
+    ]);
   });
 
   it("POST /webhooks/roller/booking acknowledges invalid payloads without triggering retries", async () => {

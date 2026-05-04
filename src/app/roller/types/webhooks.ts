@@ -2,6 +2,7 @@
 export interface NormalizedRollerBooking {
   bookingId: string;
   rollerCustomerId?: string;
+  loyaltyEnrollmentAllowed?: boolean;
   email?: string;
   firstName?: string;
   lastName?: string;
