@@ -29,20 +29,27 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
 
       await recordWebhook(db, "patch.contact_updated", body.data);
 
-      if (body.data.email) {
+      if (body.data.email || body.data.phone) {
+        const homePark = extractHomePark(body.data);
+        const loyaltyPoints = extractLoyaltyPoints(body.data);
         const customerId = await upsertCustomer(db, {
           email: body.data.email,
-          patchContactId: body.data.patchContactId
+          phone: body.data.phone,
+          patchContactId: body.data.patchContactId,
+          homeParkId: homePark.homeParkId,
+          homeParkName: homePark.homeParkName
         });
 
         await db.query(
-          `insert into loyalty_snapshots (customer_id, loyalty_points, loyalty_target, payload)
-           values ($1, $2, $3, $4)`,
+          `update customers
+           set loyalty_points = $2,
+               loyalty_target = $3,
+               updated_at = now()
+           where id = $1`,
           [
             customerId,
-            body.data.loyaltyPoints ?? 0,
-            body.data.loyaltyTarget == null ? null : body.data.loyaltyTarget,
-            body.data
+            loyaltyPoints ?? 0,
+            body.data.loyaltyTarget == null ? null : body.data.loyaltyTarget
           ]
         );
       }
@@ -71,19 +78,18 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
 
       if (body.data.email && codes.length > 0) {
         const customerId = await upsertCustomer(db, {
-          email: body.data.email,
-          patchContactId: body.data.patchContactId
+          email: body.data.email
         });
 
         for (const code of codes) {
           await db.query(
-            `insert into discount_codes (customer_id, code, status, payload)
-             values ($1, $2, 'active', $3)
+            `insert into discount_codes (customer_id, code, is_used, used_at)
+             values ($1, $2, false, null)
              on conflict (code) do update
              set customer_id = excluded.customer_id,
-                 status = excluded.status,
-                 payload = excluded.payload`,
-            [customerId, code, body.data]
+                 is_used = excluded.is_used,
+                 used_at = excluded.used_at`,
+            [customerId, code]
           );
         }
       }
@@ -93,6 +99,68 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
       next(error);
     }
   });
+}
+
+function extractHomePark(payload: Record<string, unknown>): { homeParkId?: string; homeParkName?: string } {
+  const homeParkId = readFirstString(payload, [
+    "homeParkId",
+    "home_park_id",
+    "closestParkId",
+    "closest_park_id",
+    "defaultParkId",
+    "default_park_id"
+  ]);
+
+  const homeParkName = readFirstString(payload, [
+    "homeParkName",
+    "home_park_name",
+    "homePark",
+    "home_park",
+    "closestPark",
+    "closest_park"
+  ]);
+
+  return {
+    homeParkId,
+    homeParkName
+  };
+}
+
+function extractLoyaltyPoints(payload: Record<string, unknown>): number | undefined {
+  const direct = payload.loyaltyPoints;
+  if (typeof direct === "number" && Number.isFinite(direct)) {
+    return Math.trunc(direct);
+  }
+  if (typeof direct === "string") {
+    const parsed = Number.parseInt(direct, 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  const punchcard = payload.punchcard;
+  if (typeof punchcard === "number" && Number.isFinite(punchcard)) {
+    return Math.trunc(punchcard);
+  }
+  if (typeof punchcard === "string") {
+    const parsed = Number.parseInt(punchcard, 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+}
+
+function readFirstString(payload: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
 }
 
 function isAuthorizedPatchWebhookRequest(req: express.Request, expectedApiKey: string | undefined): boolean {

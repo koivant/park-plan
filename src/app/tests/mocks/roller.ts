@@ -32,7 +32,12 @@ export const rollerBookingWebhookPayload = {
       {
         quantity: 3,
         bookingDate: "2026-05-02",
-        sessionStartTime: "10:00"
+        sessionStartTime: "10:00",
+        tickets: [
+          {
+            locations: [69184]
+          }
+        ]
       }
     ]
   }
@@ -67,6 +72,7 @@ export const bookingWebhookForFailurePayload = {
 
 export const normalizedRollerBooking = {
   bookingId: "booking-1",
+  bookingReference: "booking-1",
   rollerCustomerId: "123456",
   loyaltyEnrollmentAllowed: true,
   email: "user@example.com",
@@ -74,7 +80,13 @@ export const normalizedRollerBooking = {
   lastName: "Example",
   name: undefined,
   phone: "+358401234567",
+  source: undefined,
+  channel: undefined,
   venue: "SuperPark Vantaa",
+  parkId: "69184",
+  parkIds: ["69184"],
+  bookingDate: "2026-05-02",
+  bookingEndDate: undefined,
   startsAt: "2026-05-02T10:00:00.000Z",
   ticketCount: 3,
   status: "confirmed"

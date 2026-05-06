@@ -4,11 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createApp, type Queryable } from "../app.js";
 import {
   existingAccountProjectionRow,
-  existingBookingProjection,
-  existingSignedWaiverProjection,
   rollerBookingWebhookPayload,
-  rollerSignedWaiverProfile,
-  rollerSignedWaiverProjectionEntries,
   rollerSignedWaiverWebhookPayload
 } from "./mocks/roller.js";
 import { patchContactUpdatedPayload, patchRewardCodeWebhookPayload } from "./mocks/patch.js";
@@ -43,7 +39,10 @@ function createDb(handler: (text: string, params?: unknown[]) => QueryResult<Que
 describe("API endpoints", () => {
   it("GET /openapi/openapi.json returns the OpenAPI document", async () => {
     const db = createDb(() => createResult());
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).get("/openapi/openapi.json");
 
@@ -55,7 +54,10 @@ describe("API endpoints", () => {
 
   it("GET /docs returns a browsable OpenAPI docs page", async () => {
     const db = createDb(() => createResult());
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).get("/docs");
 
@@ -68,7 +70,10 @@ describe("API endpoints", () => {
 
   it("logs request metadata for incoming REST calls", async () => {
     const db = createDb(() => createResult([{ now: new Date("2026-01-01T00:00:00.000Z") }]));
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
 
     const response = await request(app).get("/health");
@@ -121,7 +126,10 @@ describe("API endpoints", () => {
 
   it("logs incoming webhook payloads on request start", async () => {
     const db = createDb(() => createResult());
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
 
     const response = await request(app).post("/webhooks/roller/booking").send({
@@ -156,7 +164,10 @@ describe("API endpoints", () => {
 
   it("GET /health returns database status", async () => {
     const db = createDb(() => createResult([{ now: new Date("2026-01-01T00:00:00.000Z") }]));
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).get("/health");
 
@@ -190,7 +201,10 @@ describe("API endpoints", () => {
 
   it("POST /auth/otp/request rejects missing email", async () => {
     const db = createDb(() => createResult());
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).post("/auth/otp/request").send({});
 
@@ -216,7 +230,10 @@ describe("API endpoints", () => {
 
   it("POST /auth/otp/verify rejects an invalid OTP", async () => {
     const db = createDb(() => createResult([], 0));
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app)
       .post("/auth/otp/verify")
@@ -228,7 +245,10 @@ describe("API endpoints", () => {
 
   it("GET /account returns a default account when no customer exists", async () => {
     const db = createDb(() => createResult());
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).get("/account").query({ email: "USER@example.com" });
 
@@ -237,6 +257,8 @@ describe("API endpoints", () => {
       email: "user@example.com",
       loyalty_points: 0,
       loyalty_target: null,
+      home_park: null,
+      visited_parks: [],
       profile: {
         email: "user@example.com"
       },
@@ -253,6 +275,19 @@ describe("API endpoints", () => {
           email: "user@example.com",
           loyalty_points: 7,
           loyalty_target: 10,
+          home_park: {
+            parkId: "69184",
+            parkName: "SuperPark Vantaa"
+          },
+          visited_parks: [
+            {
+              parkId: "69184",
+              parkName: "SuperPark Vantaa",
+              firstSeenAt: "2026-05-01T09:00:00.000Z",
+              lastSeenAt: "2026-05-03T09:00:00.000Z",
+              visitCount: 2
+            }
+          ],
           profile: {
             email: "user@example.com",
             name: "Taylor Example",
@@ -277,7 +312,7 @@ describe("API endpoints", () => {
           discount_codes: [
             {
               code: "FREE-1",
-              status: "active",
+              used: false,
               issuedAt: "2026-05-01T09:00:00.000Z",
               usedAt: null
             }
@@ -285,7 +320,10 @@ describe("API endpoints", () => {
         }
       ])
     );
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).get("/account").query({ email: "user@example.com" });
 
@@ -294,6 +332,19 @@ describe("API endpoints", () => {
       email: "user@example.com",
       loyalty_points: 7,
       loyalty_target: 10,
+      home_park: {
+        parkId: "69184",
+        parkName: "SuperPark Vantaa"
+      },
+      visited_parks: [
+        {
+          parkId: "69184",
+          parkName: "SuperPark Vantaa",
+          firstSeenAt: "2026-05-01T09:00:00.000Z",
+          lastSeenAt: "2026-05-03T09:00:00.000Z",
+          visitCount: 2
+        }
+      ],
       profile: {
         email: "user@example.com",
         name: "Taylor Example",
@@ -318,7 +369,7 @@ describe("API endpoints", () => {
       discount_codes: [
         {
           code: "FREE-1",
-          status: "active",
+          used: false,
           issuedAt: "2026-05-01T09:00:00.000Z",
           usedAt: null
         }
@@ -326,7 +377,7 @@ describe("API endpoints", () => {
     });
   });
 
-  it("POST /webhooks/patch/contact-updated records the webhook and stores a loyalty snapshot", async () => {
+  it("POST /webhooks/patch/contact-updated records the webhook and updates customer loyalty fields", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
@@ -334,7 +385,10 @@ describe("API endpoints", () => {
 
       return createResult();
     });
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).post("/webhooks/patch/contact-updated").send({
       ...patchContactUpdatedPayload
@@ -342,17 +396,124 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(3);
+    expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("patch.contact_updated");
-    expect(db.calls[1].params).toEqual(["user@example.com", "patch-id", null]);
-    expect(db.calls[2].params?.slice(0, 3)).toEqual(["customer-id", 4, 10]);
+    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(db.calls[2].params).toEqual(["user@example.com", null, null, "patch-id", null, null, null]);
+    expect(db.calls[3].params?.slice(0, 3)).toEqual(["customer-id", 4, 10]);
+  });
+
+  it("POST /webhooks/patch/contact-updated auto-migrates webhook metadata columns and retries insert", async () => {
+    const db = createDb((text, params) => {
+      if (text.includes("insert into webhook_events") && text.includes("provider_event_id")) {
+        if (params?.[2] === null) {
+          const retryMarker = db.calls.filter((call) => call.text.includes("insert into webhook_events")).length;
+          if (retryMarker === 1) {
+            const error = new Error('column "provider_event_id" of relation "webhook_events" does not exist') as Error & {
+              code?: string;
+            };
+            error.code = "42703";
+            throw error;
+          }
+        }
+      }
+
+      if (text.startsWith("alter table webhook_events")) {
+        return createResult();
+      }
+
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/webhooks/patch/contact-updated").send({
+      ...patchContactUpdatedPayload
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls.some((call) => call.text.includes("insert into webhook_events (type, payload)"))).toBe(false);
+    expect(db.calls.filter((call) => call.text.includes("insert into webhook_events")).length).toBe(2);
+    expect(db.calls.filter((call) => call.text.startsWith("alter table webhook_events")).length).toBe(4);
+  });
+
+  it("POST /webhooks/patch/contact-updated ingests punchcard and phone from PATCH payload", async () => {
+    const db = createDb((text) => {
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/webhooks/patch/contact-updated").send({
+      punchcard: "2",
+      email: "pabel@noemail.com",
+      phone: "442332323232"
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(5);
+    expect(db.calls[3].params).toEqual(["pabel@noemail.com", "442332323232", null, null, null, null, null]);
+    expect(db.calls[4].params?.slice(0, 3)).toEqual(["customer-id", 2, null]);
+  });
+
+  it("POST /webhooks/patch/contact-updated auto-migrates customers identity columns and retries upsert", async () => {
+    const db = createDb((text) => {
+      if (text.includes("insert into customers")) {
+        const insertAttempts = db.calls.filter((call) => call.text.includes("insert into customers")).length;
+        if (insertAttempts === 1) {
+          const error = new Error('column "phone" of relation "customers" does not exist') as Error & { code?: string };
+          error.code = "42703";
+          throw error;
+        }
+      }
+
+      if (text.startsWith("alter table customers") || text.startsWith("create unique index if not exists customers_phone_key")) {
+        return createResult();
+      }
+
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/webhooks/patch/contact-updated").send({
+      punchcard: "2",
+      email: "pabel@noemail.com",
+      phone: "442332323232"
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls.filter((call) => call.text.includes("insert into customers")).length).toBe(2);
+    expect(db.calls.filter((call) => call.text.startsWith("alter table customers")).length).toBe(10);
+    expect(db.calls.some((call) => call.text.startsWith("create unique index if not exists customers_phone_key"))).toBe(true);
   });
 
   it("POST /webhooks/patch/contact-updated rejects unauthorized requests when webhook auth key is configured", async () => {
     const db = createDb(() => createResult());
     const app = createApp({
       db,
-      config: { nodeEnv: "development", otpTtlSeconds: 600, patchWebhookAuthApiKey: "patch-secret" }
+      config: { nodeEnv: "development", otpTtlSeconds: 600, patchApiKey: "patch-secret" }
     });
 
     const response = await request(app).post("/webhooks/patch/contact-updated").send({
@@ -374,7 +535,7 @@ describe("API endpoints", () => {
     });
     const app = createApp({
       db,
-      config: { nodeEnv: "development", otpTtlSeconds: 600, patchWebhookAuthApiKey: "patch-secret" }
+      config: { nodeEnv: "development", otpTtlSeconds: 600, patchApiKey: "patch-secret" }
     });
 
     const response = await request(app)
@@ -398,7 +559,10 @@ describe("API endpoints", () => {
 
       return createResult();
     });
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).post("/webhooks/patch/reward-code").send({
       ...patchRewardCodeWebhookPayload
@@ -408,25 +572,15 @@ describe("API endpoints", () => {
     expect(response.body).toEqual({ ok: true });
     expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("patch.reward_code");
-    expect(db.calls[1].params).toEqual(["user@example.com", "patch-id", null]);
-    expect(db.calls[2].params?.slice(0, 2)).toEqual(["customer-id", "FREE-1"]);
-    expect(db.calls[3].params?.slice(0, 2)).toEqual(["customer-id", "FREE-2"]);
+    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(db.calls[2].params).toEqual(["user@example.com", null, null, null, null, null, null]);
+    expect(db.calls[3].params?.slice(0, 2)).toEqual(["customer-id", "FREE-1"]);
   });
 
-  it("POST /webhooks/roller/booking records the webhook and merges booking data into the account projection", async () => {
+  it("POST /webhooks/roller/booking records the webhook and persists customer + booking data", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
-      }
-
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: { email: "user@example.com" },
-            bookings_json: [existingBookingProjection],
-            waivers_json: []
-          }
-        ]);
       }
 
       return createResult();
@@ -437,29 +591,30 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(5);
+    expect(db.calls).toHaveLength(8);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
     expect(db.calls[1].params).toEqual(["user@example.com"]);
-    expect(db.calls[2].params).toEqual(["user@example.com", null, "123456"]);
-    expect(db.calls[4].params?.[0]).toBe("customer-id");
-    expect(db.calls[4].params?.[1]).toEqual({
-      email: "user@example.com",
-      firstName: "Taylor",
-      lastName: "Example",
-      name: "Taylor Example",
-      phone: "+358401234567"
-    });
-    expect(db.calls[4].params?.[2]).toEqual([
-      {
-        ...existingBookingProjection
-      },
-      {
-        bookingId: "booking-1",
-        venue: "SuperPark Vantaa",
-        startsAt: "2026-05-02T10:00:00.000Z",
-        ticketCount: 3,
-        status: "confirmed"
-      }
+    expect(db.calls[2].params).toEqual(["+358401234567"]);
+    expect(db.calls[4].params).toEqual(["user@example.com"]);
+    expect(db.calls[5].params).toEqual(["+358401234567"]);
+    expect(db.calls[6].params).toEqual(["user@example.com", "+358401234567", "Taylor Example", null, "123456", null, null]);
+    expect(db.calls[7].params).toEqual([
+      "booking-1",
+      "customer-id",
+      "booking-1",
+      "123456",
+      "69184",
+      "SuperPark Vantaa",
+      null,
+      null,
+      "2026-05-02",
+      null,
+      "2026-05-02T10:00:00.000Z",
+      3,
+      "confirmed",
+      "Created",
+      "2026-05-02T09:45:00.000Z",
+      "67d2ada6-10cc-4177-909d-430f3b2593d4"
     ]);
   });
 
@@ -467,16 +622,6 @@ describe("API endpoints", () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
-      }
-
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: { email: "user@example.com" },
-            bookings_json: [],
-            waivers_json: []
-          }
-        ]);
       }
 
       return createResult();
@@ -491,7 +636,7 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(5);
+    expect(db.calls).toHaveLength(8);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
   });
 
@@ -499,16 +644,6 @@ describe("API endpoints", () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
-      }
-
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: { email: "user@example.com" },
-            bookings_json: [],
-            waivers_json: []
-          }
-        ]);
       }
 
       return createResult();
@@ -526,7 +661,7 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(5);
+    expect(db.calls).toHaveLength(8);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
   });
 
@@ -545,7 +680,7 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(2);
+    expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
     expect(db.calls[1].params).toEqual(["user@example.com"]);
     expect(consoleInfo).toHaveBeenCalledWith(
@@ -570,16 +705,6 @@ describe("API endpoints", () => {
         return createResult([{ id: "existing-customer-id" }], 1);
       }
 
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: { email: "user@example.com", firstName: "Old" },
-            bookings_json: [],
-            waivers_json: []
-          }
-        ]);
-      }
-
       return createResult();
     });
     const app = createApp({ db });
@@ -594,34 +719,26 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(5);
+    expect(db.calls).toHaveLength(8);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
     expect(db.calls[1].params).toEqual(["user@example.com"]);
-    expect(db.calls[2].params).toEqual(["user@example.com", null, "123456"]);
-    expect(db.calls[4].params?.[0]).toBe("existing-customer-id");
-    expect(db.calls[4].params?.[1]).toEqual(
-      expect.objectContaining({
-        email: "user@example.com",
-        firstName: "Taylor",
-        lastName: "Example"
-      })
-    );
+    expect(db.calls[2].params).toEqual(["+358401234567"]);
+    expect(db.calls[6].params).toEqual([
+      "existing-customer-id",
+      "user@example.com",
+      "+358401234567",
+      "Taylor Example",
+      null,
+      "123456",
+      null,
+      null
+    ]);
   });
 
   it("POST /webhooks/roller/booking logs a processed event after persistence", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
-      }
-
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: { email: "user@example.com" },
-            bookings_json: [],
-            waivers_json: []
-          }
-        ]);
       }
 
       return createResult();
@@ -645,25 +762,10 @@ describe("API endpoints", () => {
     consoleInfo.mockRestore();
   });
 
-  it("POST /webhooks/roller/signed-waiver records the webhook and merges waiver data into the account projection", async () => {
+  it("POST /webhooks/roller/signed-waiver records the webhook and updates customer waiver status", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
-      }
-
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: {
-              email: "user@example.com",
-              name: "Taylor Example"
-            },
-            bookings_json: [],
-            waivers_json: [
-              existingSignedWaiverProjection
-            ]
-          }
-        ]);
       }
 
       return createResult();
@@ -674,60 +776,46 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(4);
+    expect(db.calls).toHaveLength(5);
     expect(db.calls[0].params?.[0]).toBe("roller.signed_waiver");
-    expect(db.calls[1].params).toEqual(["user@example.com", null, "64310293"]);
-    expect(db.calls[3].params?.[0]).toBe("customer-id");
-    expect(db.calls[3].params?.[1]).toEqual(rollerSignedWaiverProfile);
-    expect(db.calls[3].params?.[3]).toEqual([
-      existingSignedWaiverProjection,
-      ...rollerSignedWaiverProjectionEntries
+    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(db.calls[2].params).toEqual(["+358401234567"]);
+    expect(db.calls[3].params).toEqual(["user@example.com", "+358401234567", "Taylor Example", null, "64310293", null, null]);
+    expect(db.calls[4].params).toEqual([
+      "customer-id",
+      "valid",
+      "2026-05-02T09:45:00.000Z",
+      "2027-05-02T09:45:00.000Z"
     ]);
   });
 
   it("POST /webhooks/roller/booking accepts the documented webhook envelope even when the booking payload has no email", async () => {
     const db = createDb(() => createResult());
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).post("/webhooks/roller/booking").send(existingAccountProjectionRow.bookingWithoutEmailWebhook);
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(2);
+    expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
   });
 
   it("POST /webhooks/roller/booking updates an existing booking for cancellation without email", async () => {
     const db = createDb((text) => {
-      if (text.includes("where bookings_json @>")) {
+      if (text.includes("from bookings") && text.includes("where booking_id = $1")) {
         return createResult([{ customer_id: "customer-id" }], 1);
-      }
-
-      if (text.includes("from account_projection")) {
-        return createResult([
-          {
-            profile_json: {
-              email: "user@example.com",
-              firstName: "Taylor",
-              lastName: "Example"
-            },
-            bookings_json: [
-              {
-                bookingId: "booking-1",
-                venue: "SuperPark Vantaa",
-                startsAt: "2026-05-02T10:00:00.000Z",
-                ticketCount: 3,
-                status: "confirmed"
-              }
-            ],
-            waivers_json: []
-          }
-        ]);
       }
 
       return createResult();
     });
-    const app = createApp({ db });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
 
     const response = await request(app).post("/webhooks/roller/booking").send({
       ...existingAccountProjectionRow.bookingWithoutEmailWebhook,
@@ -742,16 +830,160 @@ describe("API endpoints", () => {
     expect(response.body).toEqual({ ok: true });
     expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
-    expect(db.calls[1].params).toEqual(["booking-1"]);
-    expect(db.calls[3].params?.[2]).toEqual([
-      {
-        bookingId: "booking-1",
-        venue: "SuperPark Vantaa",
-        startsAt: "2026-05-02T10:00:00.000Z",
-        ticketCount: 3,
-        status: "Cancelled"
-      }
+    expect(db.calls[2].params).toEqual(["booking-1"]);
+    expect(db.calls[3].params).toEqual([
+      "booking-1",
+      "customer-id",
+      "booking-1",
+      "123456",
+      null,
+      null,
+      null,
+      null,
+      "2026-05-02",
+      null,
+      "2026-05-02T10:00:00.000Z",
+      3,
+      "Cancelled",
+      "Cancelled",
+      "2026-05-02T09:45:00.000Z",
+      "67d2ada6-10cc-4177-909d-430f3b2593d4"
     ]);
+  });
+
+  it("POST /webhooks/roller/:parkId/booking uses path parkId when payload does not include park identity", async () => {
+    const db = createDb(() => createResult());
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app)
+      .post("/webhooks/roller/park-69210/booking")
+      .send(existingAccountProjectionRow.bookingWithoutEmailWebhook);
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(4);
+    expect(db.calls[3].params?.[4]).toBe("park-69210");
+  });
+
+  it("POST /webhooks/roller/booking resolves guest contact with customerId when webhook omits email and phone", async () => {
+    const db = createDb((text) => {
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "test-token",
+            expires_in: 300
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            email: "user@example.com",
+            contactNumber: "+358401234567",
+            firstName: "Taylor",
+            lastName: "Example"
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const app = createApp({
+      db,
+      config: {
+        nodeEnv: "development",
+        otpTtlSeconds: 600,
+        rollerApiBaseUrl: "https://api.roller.app",
+        rollerClientId: "roller-client-id",
+        rollerClientSecret: "roller-client-secret",
+        rollerGuestDetailPathTemplate: "/guests/{customerId}"
+      }
+    });
+
+    const response = await request(app).post("/webhooks/roller/booking").send({
+      ...existingAccountProjectionRow.bookingWithoutEmailWebhook,
+      data: {
+        ...existingAccountProjectionRow.bookingWithoutEmailWebhook.data,
+        customerFlags: ["LOYALTY_ENROLLMENT_ALLOWED"]
+      }
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.roller.app/guests/123456");
+    expect(db.calls.some((call) => JSON.stringify(call.params) === JSON.stringify(["user@example.com"]))).toBe(true);
+    expect(db.calls.some((call) => JSON.stringify(call.params) === JSON.stringify(["+358401234567"]))).toBe(true);
+    expect(
+      db.calls.some(
+        (call) =>
+          JSON.stringify(call.params) ===
+          JSON.stringify(["user@example.com", "+358401234567", "Taylor Example", null, "123456", null, null])
+      )
+    ).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("POST /webhooks/roller/booking skips guest lookup when customer exists by roller customerId", async () => {
+    const db = createDb((text) => {
+      if (text.includes("where roller_customer_id = $1")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const app = createApp({
+      db,
+      config: {
+        nodeEnv: "development",
+        otpTtlSeconds: 600,
+        rollerApiBaseUrl: "https://api.roller.app",
+        rollerClientId: "roller-client-id",
+        rollerClientSecret: "roller-client-secret",
+        rollerGuestDetailPathTemplate: "/guests/{customerId}"
+      }
+    });
+
+    const response = await request(app).post("/webhooks/roller/booking").send({
+      ...existingAccountProjectionRow.bookingWithoutEmailWebhook,
+      data: {
+        ...existingAccountProjectionRow.bookingWithoutEmailWebhook.data,
+        customerFlags: []
+      }
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(0);
+    expect(db.calls).toHaveLength(3);
+    expect(db.calls[0].params?.[0]).toBe("roller.booking");
+    expect(db.calls[1].params).toEqual(["123456"]);
+    expect(db.calls[2].params?.[1]).toBe("existing-customer-id");
+    vi.unstubAllGlobals();
   });
 
   it("POST /webhooks/roller/booking acknowledges invalid payloads without triggering retries", async () => {

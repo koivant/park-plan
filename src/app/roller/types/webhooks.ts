@@ -1,6 +1,7 @@
-/** Normalized booking data used by the loyalty account projection. */
+/** Normalized booking data persisted to customer/booking tables. */
 export interface NormalizedRollerBooking {
   bookingId: string;
+  bookingReference?: string;
   rollerCustomerId?: string;
   loyaltyEnrollmentAllowed?: boolean;
   email?: string;
@@ -8,20 +9,14 @@ export interface NormalizedRollerBooking {
   lastName?: string;
   name?: string;
   phone?: string;
+  source?: string;
+  channel?: string;
   venue?: string;
+  parkId?: string;
+  parkIds: string[];
+  bookingDate?: string;
+  bookingEndDate?: string;
   startsAt?: string;
   ticketCount?: number;
   status?: string;
 }
-
-/** Flattened waiver entry stored in the loyalty account projection. */
-export type WaiverProjectionEntry = Record<string, unknown> & {
-  waiverId: string;
-  status: string;
-  signedAt?: string;
-  isForMinor?: boolean;
-  guestId?: string;
-  versionWaiverId: string;
-  expiryDate?: string;
-  parentWaiverId?: string;
-};

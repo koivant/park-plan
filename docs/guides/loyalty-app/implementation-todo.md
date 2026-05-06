@@ -14,6 +14,15 @@
 - [x] PATCH REST API client is implemented with `Authorization` bearer token + `X-Account-Id` headers, plus a runnable access-check script.
 - [x] OTP request and OTP verify API endpoints.
 - [x] Account projection read endpoint (`GET /account`).
+- [x] Park attribution persistence from ROLLER booking webhooks (`booking -> parkId`).
+- [x] Customer park visit output in `GET /account` (`visited_parks`) derived from booking records.
+- [x] Customer home park persistence support and `GET /account` output (`home_park`) when upstream data provides it.
+- [x] Customer identity matching for booking ingestion supports email or phone.
+- [x] Customer identity merge path implemented when separate email-only and phone-only records converge.
+- [x] Webhook event metadata persistence for provider event id, event date, send date, and attempt timestamp.
+- [x] Booking projection stores `bookingReference` and `rollerCustomerId` alongside `uniqueId`.
+- [x] ROLLER booking ingestion supports venue-specific webhook path (`/webhooks/roller/:parkId/booking`) as park fallback.
+- [x] ROLLER booking ingestion can resolve missing email/phone via guest detail lookup using `customerId`.
 
 ## Remaining
 - [ ] Test PATCH `contact-updated` webhook end-to-end against real PATCH delivery.
@@ -22,7 +31,8 @@
 - [ ] Integrate real OTP delivery provider (replace demo-only OTP response behavior).
 - [ ] Implement real session/auth guard for account reads (token issuance, persistence, validation).
 - [ ] Enforce inbound webhook authentication for PATCH and ROLLER routes.
-- [ ] Implement discount-code lifecycle updates (`active` -> `used`/`expired`/`invalid`).
+- [ ] Implement PATCH used-code sync write-path (mark matching `discount_codes.is_used = true`).
+- [ ] Implement offer-targeting rules that use `visited_parks` and `home_park` in the web view.
 - [ ] Implement scheduled used-code verification against ROLLER and apply status updates.
 - [x] Define and implement booking cancel/delete projection behavior (update status).
 - [ ] Validate first-time enrollment sync path (`ROLLER -> PATCH -> loyalty API`) in staging.

@@ -61,6 +61,15 @@ When the API runs in the same Docker network as Postgres, use:
 DATABASE_URL=postgres://loyalty:loyalty@postgres:5432/loyalty
 ```
 
+ROLLER guest lookup and venue-path options:
+
+```env
+ROLLER_GUEST_DETAIL_PATH_TEMPLATE=/guests/{customerId}
+```
+
+- `ROLLER_GUEST_DETAIL_PATH_TEMPLATE` is used when booking webhooks contain `customerId` but omit email/phone.
+- The webhook bootstrap uses `/webhooks/roller/booking` as the fixed booking webhook path.
+
 API docs:
 
 ```bash

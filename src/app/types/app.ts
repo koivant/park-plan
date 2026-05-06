@@ -4,7 +4,11 @@ import type { Queryable } from "./database.js";
 export interface AppConfig {
   nodeEnv: string;
   otpTtlSeconds: number;
-  patchWebhookAuthApiKey?: string;
+  patchApiKey?: string;
+  rollerApiBaseUrl?: string;
+  rollerClientId?: string;
+  rollerClientSecret?: string;
+  rollerGuestDetailPathTemplate?: string;
 }
 
 /** Dependency overrides used by tests and local bootstrapping. */

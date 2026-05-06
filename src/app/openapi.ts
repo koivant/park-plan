@@ -97,7 +97,17 @@ const routes: RouteDoc[] = [
   {
     method: "post",
     path: "/webhooks/roller/booking",
-    summary: "Consume a ROLLER booking webhook and acknowledge non-retryable payload issues.",
+    summary: "Consume a ROLLER booking webhook, fetch guest contact by customerId when needed, and acknowledge payload issues with 202.",
+    requestBody: rollerBookingBodySchema,
+    responses: {
+      202: { description: "Webhook accepted.", schema: acceptedResponseSchema },
+      500: { description: "Unexpected server error.", schema: errorResponseSchema }
+    }
+  },
+  {
+    method: "post",
+    path: "/webhooks/roller/{parkId}/booking",
+    summary: "Consume a venue-specific ROLLER booking webhook; parkId path segment is used when payload omits park identity.",
     requestBody: rollerBookingBodySchema,
     responses: {
       202: { description: "Webhook accepted.", schema: acceptedResponseSchema },

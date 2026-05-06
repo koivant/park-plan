@@ -7,16 +7,16 @@ export const patchContactUpdatedPayload = {
 
 export const patchRewardCodeWebhookPayload = {
   email: "USER@example.com",
-  patchContactId: "patch-id",
-  codes: ["FREE-1", "FREE-2"]
+  phone: "+358401234567",
+  discount_code: "FREE-1"
 };
 
 export const patchRewardCodePayloads = {
-  singleCode: {
-    code: "FREE-1"
+  discountCode: {
+    discount_code: "FREE-ALIAS-1"
   },
-  multipleCodes: {
-    codes: ["FREE-1", 1002, null]
+  numericDiscountCode: {
+    discount_code: 1002
   },
   empty: {}
 };

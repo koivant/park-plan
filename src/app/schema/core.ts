@@ -53,6 +53,7 @@ const upcomingBookingSchema = z
   .object({
     bookingId: z.string().optional(),
     venue: z.string().optional(),
+    parkId: z.string().optional(),
     startsAt: z.string().nullable().optional(),
     status: z.string().optional(),
     ticketCount: z.number().int().optional()
@@ -68,17 +69,36 @@ const waiverSchema = z
   })
   .passthrough();
 
+const homeParkSchema = z
+  .object({
+    parkId: z.string().nullable().optional(),
+    parkName: z.string().nullable().optional()
+  })
+  .nullable();
+
+const visitedParkSchema = z
+  .object({
+    parkId: z.string(),
+    parkName: z.string().nullable().optional(),
+    firstSeenAt: z.string().nullable().optional(),
+    lastSeenAt: z.string().nullable().optional(),
+    visitCount: z.number().int().optional()
+  })
+  .passthrough();
+
 export const accountResponseSchema = z.object({
   email: emailSchema,
   loyalty_points: z.number().int(),
   loyalty_target: z.number().int().nullable(),
+  home_park: homeParkSchema,
+  visited_parks: z.array(visitedParkSchema),
   profile: accountProfileSchema,
   upcoming_bookings: z.array(upcomingBookingSchema),
   waivers: z.array(waiverSchema),
   discount_codes: z.array(
     z.object({
       code: z.string(),
-      status: z.string(),
+      used: z.boolean(),
       issuedAt: z.string().nullable().optional(),
       usedAt: z.string().nullable().optional()
     })

@@ -19,6 +19,7 @@ export function createRequestLoggingMiddleware(): express.RequestHandler {
     const startedAt = performance.now();
     const action = endpointActions[`${req.method} ${req.path}`] ?? `Handle ${req.method} ${req.path}`;
     const payload = createPayload(req);
+    const bodyJson = serializeBodyJson(req.body);
     const isWebhookRequest = req.path.startsWith("/webhooks/");
 
     if (isWebhookRequest) {
@@ -27,6 +28,7 @@ export function createRequestLoggingMiddleware(): express.RequestHandler {
         method: req.method,
         path: req.path,
         action,
+        ...(bodyJson ? { bodyJson } : {}),
         ...(payload ? { payload } : {})
       });
     }
@@ -37,6 +39,7 @@ export function createRequestLoggingMiddleware(): express.RequestHandler {
         method: req.method,
         path: req.path,
         action,
+        ...(bodyJson ? { bodyJson } : {}),
         ...(payload ? { payload } : {}),
         statusCode: res.statusCode,
         durationMs: Math.round((performance.now() - startedAt) * 100) / 100
@@ -67,6 +70,18 @@ function createPayload(req: express.Request): Record<string, unknown> | undefine
 
 function isRecordWithKeys(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && Object.keys(value).length > 0;
+}
+
+function serializeBodyJson(value: unknown): string | undefined {
+  if (!isRecordWithKeys(value)) {
+    return undefined;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Final Express error middleware for unexpected failures. */

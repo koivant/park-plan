@@ -12,14 +12,19 @@ export interface SyncRollerWebhooksResult {
 }
 
 /** Builds the managed webhook set for this app from the public base URL. */
-export function createManagedRollerWebhooks(loyaltyAppBaseUrl: string, webhookAuthApiKey: string): ManagedRollerWebhook[] {
+export function createManagedRollerWebhooks(
+  loyaltyAppBaseUrl: string,
+  webhookAuthApiKey: string,
+  bookingWebhookPath = "/webhooks/roller/booking"
+): ManagedRollerWebhook[] {
   const baseUrl = loyaltyAppBaseUrl.replace(/\/+$/, "");
+  const normalizedBookingWebhookPath = bookingWebhookPath.startsWith("/") ? bookingWebhookPath : `/${bookingWebhookPath}`;
 
   return [
     {
       key: "booking",
       createPayload: {
-        url: `${baseUrl}/webhooks/roller/booking`,
+        url: `${baseUrl}${normalizedBookingWebhookPath}`,
         enabled: true,
         authentication: {
           apiKey: webhookAuthApiKey

@@ -9,10 +9,11 @@ export const config = {
   patchApiBaseUrl: process.env.PATCH_API_BASE_URL ?? "",
   patchApiKey: process.env.PATCH_API_KEY ?? "",
   patchApiAccountId: process.env.PATCH_API_ACCOUNT_ID ?? "",
-  patchWebhookAuthApiKey: process.env.PATCH_WEBHOOK_AUTH_API_KEY ?? process.env.PATCH_WEBHOOK_API_KEY ?? "",
   rollerApiBaseUrl: process.env.ROLLER_API_BASE_URL ?? "",
   rollerClientId: process.env.ROLLER_CLIENT_ID ?? "",
   rollerClientSecret: process.env.ROLLER_CLIENT_SECRET ?? process.env.ROLLER_API_KEY ?? "",
+  rollerGuestDetailPathTemplate: process.env.ROLLER_GUEST_DETAIL_PATH_TEMPLATE ?? "/guests/{customerId}",
+  rollerBookingWebhookPath: "/webhooks/roller/booking",
   rollerWebhookAuthApiKey:
     process.env.ROLLER_WEBHOOK_AUTH_API_KEY ?? process.env.ROLLER_WEBHOOK_API_KEY ?? process.env.ROLLER_CLIENT_SECRET ?? process.env.ROLLER_API_KEY ?? "",
   loyaltyAppBaseUrl: process.env.LOYALTY_APP_BASE_URL ?? ""

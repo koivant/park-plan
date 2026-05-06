@@ -3,7 +3,7 @@ import { db } from "./db.js";
 
 async function tick(): Promise<void> {
   const activeCodes = await db.query<{ count: string }>(
-    "select count(*)::text as count from discount_codes where status = 'active'"
+    "select count(*)::text as count from discount_codes where is_used = false"
   );
 
   console.log({

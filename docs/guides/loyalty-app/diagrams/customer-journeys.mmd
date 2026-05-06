@@ -16,6 +16,7 @@ sequenceDiagram
     U->>R: Enrollment action: Join loyalty program at venue or POS
     R->>P: Automation sync: Send customer profile for loyalty
     P-->>API: Customer sync: POST /webhooks/patch/contact-updated
+    API->>API: Home park sync: Store home park when provided
   else Returning customer
     Note over U,VIEW: Existing customer continues to login
   end
@@ -30,7 +31,11 @@ sequenceDiagram
   VIEW-->>U: Customer view: Show account details, stamp count, upcoming bookings, waiver status or document link, and rewards
 
   U->>R: Purchase action: Buy park tickets
-  R-->>API: Checkout webhook: Send booking, ticket, and waiver data
+  R-->>API: Checkout webhook: Send booking payload (contains customerId, no email/phone)
+  API->>R: Guest detail lookup: GET guest detail by customerId
+  R-->>API: Guest detail response: Return email/phone for contact sync
+  Note over R,API: Park id may be missing in payload. Per-venue webhook URL path can provide park identity.
+  API->>API: Park attribution: Use payload park id or venue path key fallback
   R->>P: Automation sync: Send booking update for loyalty calculation
   P->>P: Stamp update: Add stamps from ticket quantity (single large order can max loyalty)
   P->>P: Reward check: Unlock code when stamp threshold is reached
@@ -41,7 +46,8 @@ sequenceDiagram
 
   alt Booking is edited or canceled in external system
     EXT->>R: External change: Create, update, or cancel booking
-    R-->>API: Booking webhook: Send updated booking, ticket, and waiver data
+    R-->>API: Booking webhook: Send updated booking payload
+    API->>R: Guest detail lookup (if contact missing): GET guest detail by customerId
     R->>P: Automation sync: Send booking change
     P-->>API: Loyalty correction: POST /webhooks/patch/contact-updated
     U->>VIEW: Manual refresh: Refresh loyalty page
@@ -59,7 +65,9 @@ sequenceDiagram
     P-->>API: Usage sync: POST /webhooks/patch/contact-updated
   end
 
+  Note over R,API: If API returns non-2xx or times out, ROLLER retries delivery by its webhook retry policy.
+
   U->>VIEW: Manual refresh: Refresh loyalty page
   VIEW->>API: Account load: GET /account
-  API-->>VIEW: Account response: Return updated account projection and code-used status
-  VIEW-->>U: Customer view: Show latest contact, stamp, booking, waiver, and reward state
+  API-->>VIEW: Account response: Return updated account projection, home park, visited parks, and code-used status
+  VIEW-->>U: Customer view: Show latest contact, stamp, booking, waiver, reward state, and park-targeted offers

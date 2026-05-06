@@ -278,6 +278,52 @@
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
+                    "home_park": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "parkId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "parkName": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "visited_parks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "parkId": {
+                            "type": "string"
+                          },
+                          "parkName": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "firstSeenAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastSeenAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "visitCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "parkId"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    },
                     "profile": {
                       "type": "object",
                       "properties": {
@@ -312,6 +358,9 @@
                             "type": "string"
                           },
                           "venue": {
+                            "type": "string"
+                          },
+                          "parkId": {
                             "type": "string"
                           },
                           "startsAt": {
@@ -361,8 +410,8 @@
                           "code": {
                             "type": "string"
                           },
-                          "status": {
-                            "type": "string"
+                          "used": {
+                            "type": "boolean"
                           },
                           "issuedAt": {
                             "nullable": true,
@@ -375,7 +424,7 @@
                         },
                         "required": [
                           "code",
-                          "status"
+                          "used"
                         ]
                       }
                     }
@@ -384,6 +433,8 @@
                     "email",
                     "loyalty_points",
                     "loyalty_target",
+                    "home_park",
+                    "visited_parks",
                     "profile",
                     "upcoming_bookings",
                     "waivers",
@@ -445,6 +496,11 @@
                   "email": {
                     "type": "string"
                   },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "punchcard": {},
                   "patchContactId": {},
                   "loyaltyPoints": {
                     "type": "integer",
@@ -500,6 +556,24 @@
               }
             }
           },
+          "401": {
+            "description": "Webhook auth failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error.",
             "content": {
@@ -534,11 +608,10 @@
                   "email": {
                     "type": "string"
                   },
-                  "patchContactId": {},
-                  "code": {},
-                  "codes": {
-                    "type": "array",
-                    "items": {}
+                  "discount_code": {},
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": {}
@@ -583,6 +656,24 @@
               }
             }
           },
+          "401": {
+            "description": "Webhook auth failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error.",
             "content": {
@@ -606,7 +697,7 @@
     },
     "/webhooks/roller/booking": {
       "post": {
-        "summary": "Consume a ROLLER booking webhook and acknowledge non-retryable payload issues.",
+        "summary": "Consume a ROLLER booking webhook, fetch guest contact by customerId when needed, and acknowledge payload issues with 202.",
         "requestBody": {
           "required": true,
           "content": {
@@ -626,7 +717,234 @@
                   "type": {
                     "type": "string",
                     "enum": [
-                      "Booking"
+                      "Booking",
+                      "Redemption",
+                      "Customer",
+                      "BulkExport",
+                      "SignedWaiver",
+                      "PaymentLink"
+                    ]
+                  },
+                  "eventType": {
+                    "type": "string",
+                    "enum": [
+                      "Created",
+                      "Updated",
+                      "Cancelled",
+                      "Deleted"
+                    ]
+                  },
+                  "eventDate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "bookingReference": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        ]
+                      },
+                      "uniqueId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "customerId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        ]
+                      },
+                      "email": {
+                        "type": "string"
+                      },
+                      "firstName": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lastName": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "phone": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "venue": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "startsAt": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "ticketCount": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "status": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "quantity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "bookingDate": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sessionStartTime": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sessionEndTime": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "quantity": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "bookingDate": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "sessionStartTime": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "sessionEndTime": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "additionalProperties": {}
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "id",
+                  "sendDate",
+                  "type",
+                  "eventType",
+                  "eventDate",
+                  "data"
+                ],
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/roller/{parkId}/booking": {
+      "post": {
+        "summary": "Consume a venue-specific ROLLER booking webhook; parkId path segment is used when payload omits park identity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "sendDate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Booking",
+                      "Redemption",
+                      "Customer",
+                      "BulkExport",
+                      "SignedWaiver",
+                      "PaymentLink"
                     ]
                   },
                   "eventType": {
@@ -843,7 +1161,12 @@
                   "type": {
                     "type": "string",
                     "enum": [
-                      "SignedWaiver"
+                      "Booking",
+                      "Redemption",
+                      "Customer",
+                      "BulkExport",
+                      "SignedWaiver",
+                      "PaymentLink"
                     ]
                   },
                   "eventType": {

@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { NormalizedRollerBooking, WaiverProjectionEntry } from "../types/webhooks.js";
+import type { NormalizedRollerBooking } from "../types/webhooks.js";
 import { numberOrUndefined, stringOrUndefined } from "../../utils/primitives.js";
 import { isRecord, isRecordArray } from "../../utils/records.js";
 import { rollerBookingBodySchema, rollerSignedWaiverBodySchema } from "../schema/webhooks.js";
@@ -7,26 +7,47 @@ import { rollerBookingBodySchema, rollerSignedWaiverBodySchema } from "../schema
 type RollerBookingPayload = z.infer<typeof rollerBookingBodySchema>["data"];
 type RollerSignedWaiverPayload = z.infer<typeof rollerSignedWaiverBodySchema>["data"];
 
-/** Normalizes a booking webhook payload into account-projection fields. */
+export interface NormalizedWaiverRecord {
+  waiverId: string;
+  status: string;
+  signedAt?: string;
+  isForMinor?: boolean;
+  guestId?: string;
+  versionWaiverId: string;
+  expiryDate?: string;
+  parentWaiverId?: string;
+}
+
+/** Normalizes a booking webhook payload into persistence-ready fields. */
 export function normalizeRollerBookingPayload(payload: RollerBookingPayload): NormalizedRollerBooking {
+  const parkIds = extractParkIds(payload);
+  const bookingReference = stringOrUndefined(payload.bookingReference);
+  const { bookingDate, bookingEndDate } = getBookingDateRange(payload.items);
   return {
     bookingId: String(payload.uniqueId ?? payload.bookingReference),
+    bookingReference,
     rollerCustomerId: stringOrUndefined(payload.customerId),
     loyaltyEnrollmentAllowed: getLoyaltyEnrollmentAllowed(payload),
     email: typeof payload.email === "string" ? payload.email.trim().toLowerCase() : undefined,
     firstName: stringOrUndefined(payload.firstName),
     lastName: stringOrUndefined(payload.lastName),
     name: stringOrUndefined(payload.name),
-    phone: stringOrUndefined(payload.phone),
+    phone: getBookingPhone(payload),
+    source: stringOrUndefined(payload.source),
+    channel: stringOrUndefined(payload.channel),
     venue: stringOrUndefined(payload.venue),
+    parkId: parkIds[0],
+    parkIds,
+    bookingDate,
+    bookingEndDate,
     startsAt: stringOrUndefined(payload.startsAt) ?? buildBookingStartsAt(payload.items),
     ticketCount: numberOrUndefined(payload.ticketCount) ?? sumBookingItemQuantity(payload.items),
     status: stringOrUndefined(payload.status)
   };
 }
 
-/** Flattens signed waiver records into projection entries. */
-export function createWaiverProjectionEntries(payload: RollerSignedWaiverPayload): WaiverProjectionEntry[] {
+/** Flattens signed waiver records into persistence-friendly entries. */
+export function createWaiverProjectionEntries(payload: RollerSignedWaiverPayload): NormalizedWaiverRecord[] {
   return payload.map((waiver) => ({
     waiverId: String(waiver.signedWaiverId),
     status: getWaiverStatus(waiver.isValid),
@@ -82,6 +103,24 @@ function sumBookingItemQuantity(value: unknown): number | undefined {
   return items.reduce((sum, item) => sum + (numberOrUndefined(item.quantity) ?? 0), 0);
 }
 
+function getBookingDateRange(value: unknown): { bookingDate?: string; bookingEndDate?: string } {
+  const items = normalizeBookingItems(value);
+  if (items.length === 0) {
+    return {};
+  }
+
+  const starts = items.map((item) => stringOrUndefined(item.bookingDate)).filter(isNonEmptyString);
+  const ends = items.map((item) => stringOrUndefined(item.bookingEndDate)).filter(isNonEmptyString);
+
+  const bookingDate = starts.length > 0 ? starts.sort()[0] : undefined;
+  const bookingEndDate = ends.length > 0 ? ends.sort().at(-1) : undefined;
+
+  return {
+    bookingDate,
+    bookingEndDate
+  };
+}
+
 function normalizeBookingItems(value: unknown): Record<string, unknown>[] {
   const items = isRecordArray(value);
   if (items.length > 0) {
@@ -93,6 +132,30 @@ function normalizeBookingItems(value: unknown): Record<string, unknown>[] {
   }
 
   return [];
+}
+
+function extractParkIds(payload: RollerBookingPayload): string[] {
+  const ids = new Set<string>();
+
+  const directParkId = stringOrUndefined(payload.venueId) ?? stringOrUndefined(payload.locationId);
+  if (directParkId) {
+    ids.add(directParkId);
+  }
+
+  for (const item of normalizeBookingItems(payload.items)) {
+    const tickets = isRecordArray(item.tickets);
+    for (const ticket of tickets) {
+      const locations = Array.isArray(ticket.locations) ? ticket.locations : [];
+      for (const location of locations) {
+        const parkId = stringOrUndefined(location);
+        if (parkId) {
+          ids.add(parkId);
+        }
+      }
+    }
+  }
+
+  return [...ids];
 }
 
 function getLoyaltyEnrollmentAllowed(payload: RollerBookingPayload): boolean | undefined {
@@ -156,4 +219,19 @@ function getLoyaltyEnrollmentAllowed(payload: RollerBookingPayload): boolean | u
 
 function normalizeLoyaltyFlag(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+}
+
+function getBookingPhone(payload: RollerBookingPayload): string | undefined {
+  for (const key of ["phone", "contactNumber", "mobileNumber", "mobile", "phoneNumber"]) {
+    const value = payload[key as keyof RollerBookingPayload];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }

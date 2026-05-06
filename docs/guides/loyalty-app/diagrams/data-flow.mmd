@@ -13,14 +13,17 @@ sequenceDiagram
     EXT->>R: Create booking event
   end
 
-  R-->>API: Checkout webhook: Send booking, ticket, and waiver data
-  API->>DB: Source save: Store booking, ticket, and waiver payloads
+  R-->>API: Checkout webhook: Send booking payload (customerId, booking state)
+  API->>R: Guest detail lookup: GET guest detail by customerId when contact missing
+  R-->>API: Guest detail response: Return email/phone for customer sync
+  API->>DB: Source save: Store booking state and resolved customer linkage
+  Note over R,API: Park id may be absent in payload. Venue-specific webhook path can be used as park fallback.
 
   R->>P: Automation sync: Send purchase or booking change
   P->>P: Stamp update: Add stamps from booking quantity
   P->>P: Reward check: Unlock code when stamp threshold is reached
   P-->>API: Loyalty update: POST /webhooks/patch/contact-updated
-  API->>DB: Save loyalty snapshot
+    API->>DB: Save loyalty fields and home park metadata when provided
 
   alt One or more rewards unlocked
     loop For each unlocked reward
@@ -29,14 +32,14 @@ sequenceDiagram
       P->>R: Code sync: Register code for checkout validation
     end
     P-->>API: Reward update: POST /webhooks/patch/reward-code
-    API->>DB: Save active code list
+    API->>DB: Save active discount codes
   end
 
   U->>VIEW: Open loyalty view
   VIEW->>API: Account request: GET /account
-  API->>DB: Account read: Load contact profile, stamps, bookings, waivers, and active code list
-  API-->>VIEW: Account response: Return name, contact info, stamp count, upcoming bookings, waiver status, and rewards
-  VIEW-->>U: Customer view: Show account details, stamps, upcoming bookings, waiver status or document link, and rewards
+  API->>DB: Account read: Load contact profile, stamps, bookings, waivers, home park, visited parks, and active code list
+  API-->>VIEW: Account response: Return name, contact info, stamps, home park, visited parks, upcoming bookings, waiver status, and rewards
+  VIEW-->>U: Customer view: Show account details, park-targeted offers, stamps, bookings, waiver status or document link, and rewards
 
   U->>R: Checkout action: Apply free-pass code
   R->>R: Validation rule: Verify code is active and unused
@@ -50,7 +53,7 @@ sequenceDiagram
     R-->>P: Usage result: Return code usage status
     P->>P: Contact update: Mark used codes in contact data
     P-->>API: Status update: POST /webhooks/patch/contact-updated
-    API->>DB: Used-code save: Add used codes to invalidation list
+    API->>DB: Used-code save: Mark matching discount codes as used
   end
 
   alt Booking is edited or canceled later
@@ -67,8 +70,10 @@ sequenceDiagram
     API->>DB: Failure log: Store failed webhook only
   end
 
+  Note over R,API: On non-2xx or timeout responses, ROLLER retries webhook delivery based on its retry policy.
+
   U->>VIEW: Refresh loyalty view
   VIEW->>API: Account request: GET /account
-  API->>DB: Account read: Load latest account projection
+  API->>DB: Account read: Load latest account state from normalized tables
   API-->>VIEW: Account response: Return updated profile, stamps, bookings, waiver, and code status
   VIEW-->>U: Customer view: Show latest account, booking, waiver, and reward state

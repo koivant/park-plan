@@ -40,7 +40,11 @@ async function main(): Promise<void> {
 
   const result = await syncRollerWebhooks({
     client,
-    desiredWebhooks: createManagedRollerWebhooks(config.loyaltyAppBaseUrl, config.rollerWebhookAuthApiKey)
+    desiredWebhooks: createManagedRollerWebhooks(
+      config.loyaltyAppBaseUrl,
+      config.rollerWebhookAuthApiKey,
+      config.rollerBookingWebhookPath
+    )
   });
 
   console.info({

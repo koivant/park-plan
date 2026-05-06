@@ -7,14 +7,11 @@ export interface Queryable {
 
 /** Shared customer reference fields persisted from upstream integrations. */
 export interface CustomerRefs {
-  email: string;
+  email?: unknown;
+  phone?: unknown;
+  name?: unknown;
   patchContactId?: unknown;
   rollerCustomerId?: unknown;
-}
-
-/** Row shape read from the account projection table. */
-export interface AccountProjectionRow extends QueryResultRow {
-  profile_json: unknown;
-  bookings_json: unknown;
-  waivers_json: unknown;
+  homeParkId?: unknown;
+  homeParkName?: unknown;
 }
