@@ -500,6 +500,122 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "roller_id": {},
+                  "rollerId": {},
+                  "punchcard": {},
+                  "patchContactId": {},
+                  "loyaltyPoints": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "loyaltyTarget": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Webhook payload is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Webhook auth failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/patch/{location}/contact-updated": {
+      "post": {
+        "summary": "Consume a location-scoped PATCH contact update webhook and use location as the current home park.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "roller_id": {},
+                  "rollerId": {},
                   "punchcard": {},
                   "patchContactId": {},
                   "loyaltyPoints": {
@@ -695,6 +811,106 @@
         }
       }
     },
+    "/webhooks/patch/{location}/reward-code": {
+      "post": {
+        "summary": "Consume a location-scoped PATCH reward code webhook and use location as the current home park.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "discount_code": {},
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Webhook accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Webhook payload is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Webhook auth failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/webhooks/roller/booking": {
       "post": {
         "summary": "Consume a ROLLER booking webhook, fetch guest contact by customerId when needed, and acknowledge payload issues with 202.",
@@ -771,22 +987,19 @@
                           }
                         ]
                       },
-                      "email": {
-                        "type": "string"
-                      },
-                      "firstName": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "lastName": {
-                        "type": "string",
-                        "minLength": 1
-                      },
                       "name": {
                         "type": "string",
                         "minLength": 1
                       },
-                      "phone": {
+                      "createdDate": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "channel": {
                         "type": "string",
                         "minLength": 1
                       },
@@ -794,18 +1007,36 @@
                         "type": "string",
                         "minLength": 1
                       },
-                      "startsAt": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "ticketCount": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
                       "status": {
                         "type": "string",
                         "minLength": 1
+                      },
+                      "comments": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "number"
+                      },
+                      "remainder": {
+                        "type": "number"
+                      },
+                      "amountOwing": {
+                        "type": "number"
+                      },
+                      "fees": {
+                        "type": "number"
+                      },
+                      "discount": {
+                        "type": "number"
+                      },
+                      "posNotes": {
+                        "type": "string"
+                      },
+                      "customerFlags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "items": {
                         "anyOf": [
@@ -993,22 +1224,19 @@
                           }
                         ]
                       },
-                      "email": {
-                        "type": "string"
-                      },
-                      "firstName": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "lastName": {
-                        "type": "string",
-                        "minLength": 1
-                      },
                       "name": {
                         "type": "string",
                         "minLength": 1
                       },
-                      "phone": {
+                      "createdDate": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "channel": {
                         "type": "string",
                         "minLength": 1
                       },
@@ -1016,18 +1244,36 @@
                         "type": "string",
                         "minLength": 1
                       },
-                      "startsAt": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "ticketCount": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
                       "status": {
                         "type": "string",
                         "minLength": 1
+                      },
+                      "comments": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "number"
+                      },
+                      "remainder": {
+                        "type": "number"
+                      },
+                      "amountOwing": {
+                        "type": "number"
+                      },
+                      "fees": {
+                        "type": "number"
+                      },
+                      "discount": {
+                        "type": "number"
+                      },
+                      "posNotes": {
+                        "type": "string"
+                      },
+                      "customerFlags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "items": {
                         "anyOf": [

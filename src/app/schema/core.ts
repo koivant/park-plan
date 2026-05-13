@@ -19,6 +19,18 @@ export const accountQuerySchema = z.object({
   email: emailSchema
 });
 
+const optionalTextSchema = z
+  .string()
+  .trim()
+  .transform((value) => (value.length === 0 ? undefined : value))
+  .optional();
+
+export const joinSubmissionSchema = z.object({
+  name: optionalTextSchema,
+  email: emailSchema,
+  phone: optionalTextSchema
+});
+
 export const errorResponseSchema = z.object({
   error: z.string()
 });

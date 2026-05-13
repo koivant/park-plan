@@ -68,6 +68,132 @@ describe("API endpoints", () => {
     expect(response.headers["content-type"]).toContain("text/html");
   });
 
+  it("GET /join returns a demo join form page", async () => {
+    const db = createDb(() => createResult());
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).get("/join");
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("<form method=\"post\" action=\"/join\">");
+    expect(response.text).toContain("name=\"email\"");
+    expect(response.text).toContain("name=\"phone\"");
+    expect(response.text).toContain("name=\"name\"");
+    expect(response.text).not.toContain("name=\"rollerCustomerId\"");
+    expect(response.text).not.toContain("name=\"patchContactId\"");
+    expect(response.text).not.toContain("name=\"homeParkId\"");
+    expect(response.headers["content-type"]).toContain("text/html");
+  });
+
+  it("POST /join creates a pending customer account when email and phone are not registered", async () => {
+    const db = createDb((text, params) => {
+      if (text.includes("where email = $1")) {
+        return createResult([], 0);
+      }
+
+      if (text.includes("where phone = $1")) {
+        return createResult([], 0);
+      }
+
+      if (text.includes("insert into customers")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      if (text.includes("set pending = $2")) {
+        return createResult([], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/join").type("form").send({
+      name: "Taylor Example",
+      email: " TAYLOR@example.com ",
+      phone: "+358 40 123 4567"
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("Account created");
+    expect(response.text).toContain("pending");
+    expect(response.text).toContain("customer-id");
+    expect(
+      db.calls.some(
+        (call) =>
+          call.text.includes("insert into customers") &&
+          JSON.stringify(call.params) ===
+            JSON.stringify([
+              "taylor@example.com",
+              "+358401234567",
+              "Taylor Example",
+              null,
+              null,
+              null,
+              null
+            ])
+      )
+    ).toBe(true);
+    expect(db.calls.some((call) => call.text.includes("set pending = $2") && JSON.stringify(call.params) === JSON.stringify(["customer-id", true]))).toBe(true);
+  });
+
+  it("POST /join rejects duplicate signups when email already exists", async () => {
+    const db = createDb((text) => {
+      if (text.includes("where email = $1")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/join").type("form").send({
+      name: "Taylor Example",
+      email: "taylor@example.com",
+      phone: "+358401234567"
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("already been signed up");
+    expect(db.calls.some((call) => call.text.includes("insert into customers"))).toBe(false);
+  });
+
+  it("POST /join rejects duplicate signups when phone already exists", async () => {
+    const db = createDb((text) => {
+      if (text.includes("where email = $1")) {
+        return createResult([], 0);
+      }
+
+      if (text.includes("where phone = $1")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/join").type("form").send({
+      name: "Taylor Example",
+      email: "taylor@example.com",
+      phone: "+358401234567"
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("already been signed up");
+    expect(db.calls.some((call) => call.text.includes("insert into customers"))).toBe(false);
+  });
+
   it("logs request metadata for incoming REST calls", async () => {
     const db = createDb(() => createResult([{ now: new Date("2026-01-01T00:00:00.000Z") }]));
     const app = createApp({
@@ -403,6 +529,31 @@ describe("API endpoints", () => {
     expect(db.calls[3].params?.slice(0, 3)).toEqual(["customer-id", 4, 10]);
   });
 
+  it("POST /webhooks/patch/:location/contact-updated uses location as customer home park", async () => {
+    const db = createDb((text) => {
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/webhooks/patch/glasgow/contact-updated").send({
+      ...patchContactUpdatedPayload
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(4);
+    expect(db.calls[0].params?.[0]).toBe("patch.contact_updated");
+    expect(db.calls[2].params).toEqual(["user@example.com", null, null, "patch-id", null, "glasgow", "glasgow"]);
+    expect(db.calls[3].params?.slice(0, 3)).toEqual(["customer-id", 4, 10]);
+  });
+
   it("POST /webhooks/patch/contact-updated auto-migrates webhook metadata columns and retries insert", async () => {
     const db = createDb((text, params) => {
       if (text.includes("insert into webhook_events") && text.includes("provider_event_id")) {
@@ -470,6 +621,64 @@ describe("API endpoints", () => {
     expect(db.calls[4].params?.slice(0, 3)).toEqual(["customer-id", 2, null]);
   });
 
+  it("POST /webhooks/patch/contact-updated matches existing customer by roller_id and updates that record", async () => {
+    const db = createDb((text, params) => {
+      if (text.includes("where email = $1")) {
+        return createResult([], 0);
+      }
+
+      if (text.includes("where phone = $1")) {
+        return createResult([], 0);
+      }
+
+      if (text.includes("where roller_customer_id = $1")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      if (text.includes("update customers") && text.includes("returning id")) {
+        return createResult([{ id: "existing-customer-id" }], 1);
+      }
+
+      if (text.includes("update customers") && text.includes("set loyalty_points = $2")) {
+        return createResult([], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/webhooks/patch/contact-updated").send({
+      discount_code: "",
+      email: "antti.koivisto+6@qvik.fi",
+      phone: "4434343443",
+      roller_id: "97841376"
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls.some((call) => JSON.stringify(call.params) === JSON.stringify(["97841376"]))).toBe(true);
+    expect(
+      db.calls.some(
+        (call) =>
+          JSON.stringify(call.params) ===
+          JSON.stringify([
+            "existing-customer-id",
+            "antti.koivisto+6@qvik.fi",
+            "4434343443",
+            null,
+            null,
+            "97841376",
+            null,
+            null
+          ])
+      )
+    ).toBe(true);
+    expect(db.calls.some((call) => JSON.stringify(call.params?.slice(0, 3)) === JSON.stringify(["existing-customer-id", 0, null]))).toBe(true);
+  });
+
   it("POST /webhooks/patch/contact-updated auto-migrates customers identity columns and retries upsert", async () => {
     const db = createDb((text) => {
       if (text.includes("insert into customers")) {
@@ -505,27 +714,11 @@ describe("API endpoints", () => {
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
     expect(db.calls.filter((call) => call.text.includes("insert into customers")).length).toBe(2);
-    expect(db.calls.filter((call) => call.text.startsWith("alter table customers")).length).toBe(10);
+    expect(db.calls.filter((call) => call.text.startsWith("alter table customers")).length).toBe(11);
     expect(db.calls.some((call) => call.text.startsWith("create unique index if not exists customers_phone_key"))).toBe(true);
   });
 
-  it("POST /webhooks/patch/contact-updated rejects unauthorized requests when webhook auth key is configured", async () => {
-    const db = createDb(() => createResult());
-    const app = createApp({
-      db,
-      config: { nodeEnv: "development", otpTtlSeconds: 600, patchApiKey: "patch-secret" }
-    });
-
-    const response = await request(app).post("/webhooks/patch/contact-updated").send({
-      ...patchContactUpdatedPayload
-    });
-
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ error: "unauthorized" });
-    expect(db.calls).toHaveLength(0);
-  });
-
-  it("POST /webhooks/patch/reward-code accepts x-api-key when webhook auth key is configured", async () => {
+  it("POST /webhooks/patch/contact-updated accepts requests without webhook auth", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
         return createResult([{ id: "customer-id" }], 1);
@@ -538,12 +731,32 @@ describe("API endpoints", () => {
       config: { nodeEnv: "development", otpTtlSeconds: 600, patchApiKey: "patch-secret" }
     });
 
-    const response = await request(app)
-      .post("/webhooks/patch/reward-code")
-      .set("x-api-key", "patch-secret")
-      .send({
-        ...patchRewardCodeWebhookPayload
-      });
+    const response = await request(app).post("/webhooks/patch/contact-updated").send({
+      ...patchContactUpdatedPayload
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(4);
+    expect(db.calls[0].params?.[0]).toBe("patch.contact_updated");
+  });
+
+  it("POST /webhooks/patch/reward-code accepts requests without webhook auth", async () => {
+    const db = createDb((text) => {
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600, patchApiKey: "patch-secret" }
+    });
+
+    const response = await request(app).post("/webhooks/patch/reward-code").send({
+      ...patchRewardCodeWebhookPayload
+    });
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
@@ -577,6 +790,31 @@ describe("API endpoints", () => {
     expect(db.calls[3].params?.slice(0, 2)).toEqual(["customer-id", "FREE-1"]);
   });
 
+  it("POST /webhooks/patch/:location/reward-code uses location as customer home park", async () => {
+    const db = createDb((text) => {
+      if (text.includes("returning id")) {
+        return createResult([{ id: "customer-id" }], 1);
+      }
+
+      return createResult();
+    });
+    const app = createApp({
+      db,
+      config: { nodeEnv: "development", otpTtlSeconds: 600 }
+    });
+
+    const response = await request(app).post("/webhooks/patch/glasgow/reward-code").send({
+      ...patchRewardCodeWebhookPayload
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ ok: true });
+    expect(db.calls).toHaveLength(4);
+    expect(db.calls[0].params?.[0]).toBe("patch.reward_code");
+    expect(db.calls[2].params).toEqual(["user@example.com", null, null, null, null, "glasgow", "glasgow"]);
+    expect(db.calls[3].params?.slice(0, 2)).toEqual(["customer-id", "FREE-1"]);
+  });
+
   it("POST /webhooks/roller/booking records the webhook and persists customer + booking data", async () => {
     const db = createDb((text) => {
       if (text.includes("returning id")) {
@@ -591,22 +829,19 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(8);
+    expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
-    expect(db.calls[1].params).toEqual(["user@example.com"]);
-    expect(db.calls[2].params).toEqual(["+358401234567"]);
-    expect(db.calls[4].params).toEqual(["user@example.com"]);
-    expect(db.calls[5].params).toEqual(["+358401234567"]);
-    expect(db.calls[6].params).toEqual(["user@example.com", "+358401234567", "Taylor Example", null, "123456", null, null]);
-    expect(db.calls[7].params).toEqual([
+    expect(db.calls[1].params).toEqual(["123456"]);
+    expect(db.calls[2].params).toEqual(["booking-1"]);
+    expect(db.calls[3].params).toEqual([
       "booking-1",
-      "customer-id",
+      null,
       "booking-1",
       "123456",
       "69184",
-      "SuperPark Vantaa",
       null,
-      null,
+      "VenueManager",
+      "VenueManager",
       "2026-05-02",
       null,
       "2026-05-02T10:00:00.000Z",
@@ -636,7 +871,7 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(8);
+    expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
   });
 
@@ -661,11 +896,11 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(8);
+    expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
   });
 
-  it("POST /webhooks/roller/booking skips contact sync when enrollment is not allowed and customer does not exist", async () => {
+  it("POST /webhooks/roller/booking skips contact sync when no contact data can be resolved", async () => {
     const db = createDb(() => createResult());
     const app = createApp({ db });
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
@@ -682,20 +917,20 @@ describe("API endpoints", () => {
     expect(response.body).toEqual({ ok: true });
     expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
-    expect(db.calls[1].params).toEqual(["user@example.com"]);
+    expect(db.calls[1].params).toEqual(["123456"]);
     expect(consoleInfo).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "roller_booking_contact_sync_skipped",
         route: "/webhooks/roller/booking",
         bookingId: "booking-1",
-        reason: "loyalty_enrollment_not_allowed"
+        reason: "no_email_and_unknown_booking"
       })
     );
 
     consoleInfo.mockRestore();
   });
 
-  it("POST /webhooks/roller/booking syncs follow-up contact details when customer already exists", async () => {
+  it("POST /webhooks/roller/booking links booking to existing customer by roller customer id", async () => {
     const db = createDb((text) => {
       if (text.includes("from customers")) {
         return createResult([{ id: "existing-customer-id" }], 1);
@@ -719,20 +954,10 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(8);
+    expect(db.calls).toHaveLength(3);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
-    expect(db.calls[1].params).toEqual(["user@example.com"]);
-    expect(db.calls[2].params).toEqual(["+358401234567"]);
-    expect(db.calls[6].params).toEqual([
-      "existing-customer-id",
-      "user@example.com",
-      "+358401234567",
-      "Taylor Example",
-      null,
-      "123456",
-      null,
-      null
-    ]);
+    expect(db.calls[1].params).toEqual(["123456"]);
+    expect(db.calls[2].params?.[1]).toBe("existing-customer-id");
   });
 
   it("POST /webhooks/roller/booking logs a processed event after persistence", async () => {
@@ -755,7 +980,7 @@ describe("API endpoints", () => {
         type: "roller_booking_processed",
         route: "/webhooks/roller/booking",
         bookingId: "booking-1",
-        customerId: "customer-id"
+        customerId: null
       })
     );
 
@@ -776,12 +1001,13 @@ describe("API endpoints", () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(5);
+    expect(db.calls).toHaveLength(6);
     expect(db.calls[0].params?.[0]).toBe("roller.signed_waiver");
     expect(db.calls[1].params).toEqual(["user@example.com"]);
     expect(db.calls[2].params).toEqual(["+358401234567"]);
-    expect(db.calls[3].params).toEqual(["user@example.com", "+358401234567", "Taylor Example", null, "64310293", null, null]);
-    expect(db.calls[4].params).toEqual([
+    expect(db.calls[3].params).toEqual(["64310293"]);
+    expect(db.calls[4].params).toEqual(["user@example.com", "+358401234567", "Taylor Example", null, "64310293", null, null]);
+    expect(db.calls[5].params).toEqual([
       "customer-id",
       "valid",
       "2026-05-02T09:45:00.000Z",
@@ -802,6 +1028,8 @@ describe("API endpoints", () => {
     expect(response.body).toEqual({ ok: true });
     expect(db.calls).toHaveLength(4);
     expect(db.calls[0].params?.[0]).toBe("roller.booking");
+    expect(db.calls[3].params?.[4]).toBe(null);
+    expect(db.calls[3].params?.[5]).toBe(null);
   });
 
   it("POST /webhooks/roller/booking updates an existing booking for cancellation without email", async () => {
@@ -866,6 +1094,7 @@ describe("API endpoints", () => {
     expect(response.body).toEqual({ ok: true });
     expect(db.calls).toHaveLength(4);
     expect(db.calls[3].params?.[4]).toBe("park-69210");
+    expect(db.calls[3].params?.[5]).toBe(null);
   });
 
   it("POST /webhooks/roller/booking resolves guest contact with customerId when webhook omits email and phone", async () => {

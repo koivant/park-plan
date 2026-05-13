@@ -1,7 +1,8 @@
 import type express from "express";
 import { createOpenApiDocument } from "../openapi.js";
-import { accountQuerySchema, otpRequestBodySchema, otpVerifyBodySchema } from "../schema/core.js";
+import { accountQuerySchema, joinSubmissionSchema, otpRequestBodySchema, otpVerifyBodySchema } from "../schema/core.js";
 import { readAccountState } from "../services/account-store.js";
+import { findCustomerIdByEmail, findCustomerIdByPhone, setCustomerPendingStatus, upsertCustomer } from "../services/customer-store.js";
 import type { AppDependencies } from "../types/app.js";
 import { createDocsHtml } from "../utils/docs.js";
 import { hashOtp } from "../utils/crypto.js";
@@ -20,6 +21,46 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
 
   app.get("/docs", (_req, res) => {
     res.type("html").send(createDocsHtml("/openapi/openapi.json"));
+  });
+
+  app.get("/join", (_req, res) => {
+    res.type("html").send(createJoinFormHtml());
+  });
+
+  app.post("/join", async (req, res, next) => {
+    try {
+      const submission = joinSubmissionSchema.safeParse(req.body);
+      if (!submission.success) {
+        res.status(400).type("html").send(createJoinResultHtml("Invalid form input. Email is required."));
+        return;
+      }
+
+      const existingByEmail = await findCustomerIdByEmail(db, submission.data.email);
+      const existingByPhone = submission.data.phone ? await findCustomerIdByPhone(db, submission.data.phone) : undefined;
+
+      if (existingByEmail || existingByPhone) {
+        res
+          .status(200)
+          .type("html")
+          .send(createJoinResultHtml("These contact details have already been signed up."));
+        return;
+      }
+
+      const customerId = await upsertCustomer(db, {
+        name: submission.data.name,
+        email: submission.data.email,
+        phone: submission.data.phone
+      });
+      await setCustomerPendingStatus(db, customerId, true);
+
+      res.type("html").send(
+        createJoinResultHtml(
+          `Account created. Customer id: ${escapeHtml(customerId)}. Status: pending email verification.`
+        )
+      );
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.get("/health", async (_req, res, next) => {
@@ -108,4 +149,64 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
       next(error);
     }
   });
+}
+
+function createJoinFormHtml(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join Loyalty Demo</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; margin: 0; background: #f4f6f8; color: #17212b; }
+    main { max-width: 640px; margin: 32px auto; background: #fff; border: 1px solid #dde3ea; border-radius: 12px; padding: 20px; }
+    h1 { font-size: 1.4rem; margin: 0 0 8px; }
+    p { margin: 0 0 16px; color: #45576a; }
+    form { display: grid; gap: 10px; }
+    label { display: grid; gap: 4px; font-size: 0.95rem; }
+    input { font: inherit; padding: 10px; border: 1px solid #c5ced8; border-radius: 8px; }
+    button { margin-top: 8px; font: inherit; padding: 10px 14px; border: 0; border-radius: 8px; background: #0f5bb8; color: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Join Loyalty Program</h1>
+    <p>Sign up with your contact details.</p>
+    <form method="post" action="/join">
+      <label>Name <input name="name" type="text" autocomplete="name"></label>
+      <label>Email <input name="email" type="email" required autocomplete="email"></label>
+      <label>Phone <input name="phone" type="tel" autocomplete="tel"></label>
+      <button type="submit">Create Account</button>
+    </form>
+  </main>
+</body>
+</html>`;
+}
+
+function createJoinResultHtml(message: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join Result</title>
+</head>
+<body>
+  <main>
+    <p>${message}</p>
+    <p><a href="/join">Back to form</a></p>
+  </main>
+</body>
+</html>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
 }

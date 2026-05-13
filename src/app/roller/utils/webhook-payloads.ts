@@ -28,11 +28,7 @@ export function normalizeRollerBookingPayload(payload: RollerBookingPayload): No
     bookingReference,
     rollerCustomerId: stringOrUndefined(payload.customerId),
     loyaltyEnrollmentAllowed: getLoyaltyEnrollmentAllowed(payload),
-    email: typeof payload.email === "string" ? payload.email.trim().toLowerCase() : undefined,
-    firstName: stringOrUndefined(payload.firstName),
-    lastName: stringOrUndefined(payload.lastName),
     name: stringOrUndefined(payload.name),
-    phone: getBookingPhone(payload),
     source: stringOrUndefined(payload.source),
     channel: stringOrUndefined(payload.channel),
     venue: stringOrUndefined(payload.venue),
@@ -40,8 +36,8 @@ export function normalizeRollerBookingPayload(payload: RollerBookingPayload): No
     parkIds,
     bookingDate,
     bookingEndDate,
-    startsAt: stringOrUndefined(payload.startsAt) ?? buildBookingStartsAt(payload.items),
-    ticketCount: numberOrUndefined(payload.ticketCount) ?? sumBookingItemQuantity(payload.items),
+    startsAt: buildBookingStartsAt(payload.items),
+    ticketCount: sumBookingItemQuantity(payload.items),
     status: stringOrUndefined(payload.status)
   };
 }
@@ -137,11 +133,6 @@ function normalizeBookingItems(value: unknown): Record<string, unknown>[] {
 function extractParkIds(payload: RollerBookingPayload): string[] {
   const ids = new Set<string>();
 
-  const directParkId = stringOrUndefined(payload.venueId) ?? stringOrUndefined(payload.locationId);
-  if (directParkId) {
-    ids.add(directParkId);
-  }
-
   for (const item of normalizeBookingItems(payload.items)) {
     const tickets = isRecordArray(item.tickets);
     for (const ticket of tickets) {
@@ -159,77 +150,10 @@ function extractParkIds(payload: RollerBookingPayload): string[] {
 }
 
 function getLoyaltyEnrollmentAllowed(payload: RollerBookingPayload): boolean | undefined {
-  for (const key of [
-    "loyaltyEnrollmentAllowed",
-    "loyaltyEnrolmentAllowed",
-    "enrollInLoyalty",
-    "enrolInLoyalty",
-    "joinLoyalty",
-    "joinedLoyalty",
-    "loyaltyOptIn",
-    "loyaltyOptedIn"
-  ]) {
-    const value = payload[key as keyof RollerBookingPayload];
-    if (typeof value === "boolean") {
-      return value;
-    }
-  }
-
-  const customerFlags = Array.isArray(payload.customerFlags) ? payload.customerFlags : [];
-  if (customerFlags.length === 0) {
-    return undefined;
-  }
-
-  const normalizedFlags = customerFlags
-    .filter((flag): flag is string => typeof flag === "string")
-    .map(normalizeLoyaltyFlag);
-
-  if (
-    normalizedFlags.some((flag) =>
-      [
-        "loyalty_enrollment_allowed",
-        "loyalty_enrolment_allowed",
-        "loyalty_opt_in",
-        "loyalty_opted_in",
-        "joined_loyalty",
-        "enrolled_in_loyalty",
-        "enrolment_allowed"
-      ].includes(flag)
-    )
-  ) {
-    return true;
-  }
-
-  if (
-    normalizedFlags.some((flag) =>
-      [
-        "loyalty_enrollment_denied",
-        "loyalty_enrolment_denied",
-        "loyalty_opt_out",
-        "loyalty_opted_out",
-        "do_not_enroll_loyalty"
-      ].includes(flag)
-    )
-  ) {
-    return false;
-  }
-
-  return undefined;
-}
-
-function normalizeLoyaltyFlag(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-}
-
-function getBookingPhone(payload: RollerBookingPayload): string | undefined {
-  for (const key of ["phone", "contactNumber", "mobileNumber", "mobile", "phoneNumber"]) {
-    const value = payload[key as keyof RollerBookingPayload];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-
-  return undefined;
+  // TODO(roller): Re-enable customer-level enrollment checks when opt-in/out rules are finalized.
+  // Current business rule: all customers are considered enrolled.
+  void payload;
+  return true;
 }
 
 function isNonEmptyString(value: unknown): value is string {

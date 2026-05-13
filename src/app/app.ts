@@ -21,10 +21,11 @@ export function createApp(options: CreateAppOptions = {}): express.Application {
   const randomUUID = options.randomUUID ?? (() => crypto.randomUUID());
 
   app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: false }));
   app.use(createRequestLoggingMiddleware());
 
   registerCoreRoutes({ app, db, config, now, randomOtp, randomUUID });
-  registerPatchWebhookRoutes({ app, db, patchWebhookAuthApiKey: config.patchApiKey });
+  registerPatchWebhookRoutes({ app, db });
   const rollerGuestLookup =
     config.rollerApiBaseUrl && config.rollerClientId && config.rollerClientSecret
       ? createAuthenticatedRollerGuestClient({

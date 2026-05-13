@@ -1,0 +1,44 @@
+sequenceDiagram
+  autonumber
+  actor U as Park visitor
+  participant SITE as SuperPark website
+  participant PARK as Park or checkout
+  participant VIEW as Loyalty View (Web or PWA)
+  participant EMAIL as Email
+
+  U->>SITE: Open SuperPark website
+  SITE-->>U: Show loyalty entry point
+
+  alt First-time customer enrollment
+    U->>VIEW: Join with name, email, and phone
+    VIEW-->>U: Confirm account is created
+    Note over U,VIEW: The current park is used as the customer's home park when known.
+  else Returning customer
+    U->>VIEW: Open loyalty view
+  end
+
+  U->>VIEW: Enter email to access account
+  VIEW->>EMAIL: Send one-time code
+  EMAIL-->>U: Deliver one-time code
+  U->>VIEW: Enter code
+  VIEW-->>U: Show profile, stamp count, bookings, tickets, parks, waivers, and rewards
+
+  U->>PARK: Buy park tickets
+  PARK-->>U: Confirm booking
+  U->>VIEW: Manual refresh: Refresh loyalty page
+  VIEW-->>U: Show updated booking, ticket count, visited park, and stamps
+
+  alt Booking is changed or canceled
+    PARK-->>U: Confirm booking change
+    U->>VIEW: Manual refresh: Refresh loyalty page
+    VIEW-->>U: Show corrected booking and stamp state
+  end
+
+  alt Reward is available
+    VIEW-->>U: Show reward code
+    U->>PARK: Use reward code at checkout
+    PARK-->>U: Apply discount when code is valid
+  end
+
+  U->>VIEW: Return later
+  VIEW-->>U: Show latest account, bookings, tickets, stamps, parks, waivers, and rewards

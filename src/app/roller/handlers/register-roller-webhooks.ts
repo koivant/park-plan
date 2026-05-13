@@ -52,15 +52,13 @@ export function registerRollerWebhookRoutes(options: RegisterRollerWebhookRoutes
       const endpointParkId = readEndpointParkId(req.params);
       const resolvedParkId = booking.parkId ?? endpointParkId;
       let customerId: string | undefined;
-      const existingCustomerIdByEmail = booking.email ? await findCustomerIdByEmail(db, booking.email) : undefined;
-      const existingCustomerIdByPhone = booking.phone ? await findCustomerIdByPhone(db, booking.phone) : undefined;
       const existingCustomerIdByRollerCustomerId = booking.rollerCustomerId
         ? await findCustomerIdByRollerCustomerId(db, booking.rollerCustomerId)
         : undefined;
-      const existingCustomerId = existingCustomerIdByEmail ?? existingCustomerIdByPhone ?? existingCustomerIdByRollerCustomerId;
-      let resolvedEmail = booking.email;
-      let resolvedPhone = booking.phone;
-      let resolvedName = booking.name ?? buildWaiverName(booking.firstName, booking.lastName);
+      let existingCustomerId = existingCustomerIdByRollerCustomerId;
+      let resolvedEmail: string | undefined;
+      let resolvedPhone: string | undefined;
+      let resolvedName = booking.name;
 
       if (
         (!resolvedEmail && !resolvedPhone) &&
@@ -98,6 +96,10 @@ export function registerRollerWebhookRoutes(options: RegisterRollerWebhookRoutes
       }
 
       if (resolvedEmail || resolvedPhone) {
+        existingCustomerId = existingCustomerId
+          ?? (resolvedEmail ? await findCustomerIdByEmail(db, resolvedEmail) : undefined)
+          ?? (resolvedPhone ? await findCustomerIdByPhone(db, resolvedPhone) : undefined);
+
         if (!existingCustomerId && booking.loyaltyEnrollmentAllowed !== true) {
           console.info({
             type: "roller_booking_contact_sync_skipped",

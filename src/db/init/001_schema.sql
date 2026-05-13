@@ -11,6 +11,7 @@ create table if not exists customers (
   home_park_name text,
   loyalty_points integer not null default 0,
   loyalty_target integer,
+  pending boolean not null default false,
   waiver_status text,
   waiver_signed_at timestamptz,
   waiver_expiry_date timestamptz,

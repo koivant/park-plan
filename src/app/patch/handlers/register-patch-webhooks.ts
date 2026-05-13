@@ -7,20 +7,14 @@ import { recordWebhook, upsertCustomer } from "../../services/customer-store.js"
 interface RegisterPatchWebhookRoutesOptions {
   app: express.Application;
   db: Queryable;
-  patchWebhookAuthApiKey?: string;
 }
 
 /** Registers inbound PATCH webhook endpoints. */
 export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOptions): void {
-  const { app, db, patchWebhookAuthApiKey } = options;
+  const { app, db } = options;
 
-  app.post("/webhooks/patch/contact-updated", async (req, res, next) => {
+  const handleContactUpdated: express.RequestHandler = async (req, res, next) => {
     try {
-      if (!isAuthorizedPatchWebhookRequest(req, patchWebhookAuthApiKey)) {
-        res.status(401).json({ error: "unauthorized" });
-        return;
-      }
-
       const body = patchContactUpdatedBodySchema.safeParse(req.body);
       if (!body.success) {
         res.status(400).json({ error: "invalid_payload" });
@@ -30,11 +24,13 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
       await recordWebhook(db, "patch.contact_updated", body.data);
 
       if (body.data.email || body.data.phone) {
-        const homePark = extractHomePark(body.data);
+        const homePark = extractHomePark(body.data, readLocationParam(req.params));
         const loyaltyPoints = extractLoyaltyPoints(body.data);
+        const rollerCustomerId = extractRollerCustomerId(body.data);
         const customerId = await upsertCustomer(db, {
           email: body.data.email,
           phone: body.data.phone,
+          rollerCustomerId,
           patchContactId: body.data.patchContactId,
           homeParkId: homePark.homeParkId,
           homeParkName: homePark.homeParkName
@@ -58,15 +54,13 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
     } catch (error) {
       next(error);
     }
-  });
+  };
 
-  app.post("/webhooks/patch/reward-code", async (req, res, next) => {
+  app.post("/webhooks/patch/contact-updated", handleContactUpdated);
+  app.post("/webhooks/patch/:location/contact-updated", handleContactUpdated);
+
+  const handleRewardCode: express.RequestHandler = async (req, res, next) => {
     try {
-      if (!isAuthorizedPatchWebhookRequest(req, patchWebhookAuthApiKey)) {
-        res.status(401).json({ error: "unauthorized" });
-        return;
-      }
-
       const body = patchRewardCodeBodySchema.safeParse(req.body);
       if (!body.success) {
         res.status(400).json({ error: "invalid_payload" });
@@ -77,8 +71,11 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
       const codes = extractPatchRewardCodes(body.data);
 
       if (body.data.email && codes.length > 0) {
+        const homePark = readLocationHomePark(req.params);
         const customerId = await upsertCustomer(db, {
-          email: body.data.email
+          email: body.data.email,
+          homeParkId: homePark?.homeParkId,
+          homeParkName: homePark?.homeParkName
         });
 
         for (const code of codes) {
@@ -98,18 +95,27 @@ export function registerPatchWebhookRoutes(options: RegisterPatchWebhookRoutesOp
     } catch (error) {
       next(error);
     }
-  });
+  };
+
+  app.post("/webhooks/patch/reward-code", handleRewardCode);
+  app.post("/webhooks/patch/:location/reward-code", handleRewardCode);
 }
 
-function extractHomePark(payload: Record<string, unknown>): { homeParkId?: string; homeParkName?: string } {
-  const homeParkId = readFirstString(payload, [
-    "homeParkId",
-    "home_park_id",
-    "closestParkId",
-    "closest_park_id",
-    "defaultParkId",
-    "default_park_id"
-  ]);
+function extractHomePark(
+  payload: Record<string, unknown>,
+  location: string | undefined
+): { homeParkId?: string; homeParkName?: string } {
+  const locationHomePark = location ? { homeParkId: location, homeParkName: location } : undefined;
+  const homeParkId =
+    locationHomePark?.homeParkId ??
+    readFirstString(payload, [
+      "homeParkId",
+      "home_park_id",
+      "closestParkId",
+      "closest_park_id",
+      "defaultParkId",
+      "default_park_id"
+    ]);
 
   const homeParkName = readFirstString(payload, [
     "homeParkName",
@@ -118,12 +124,31 @@ function extractHomePark(payload: Record<string, unknown>): { homeParkId?: strin
     "home_park",
     "closestPark",
     "closest_park"
-  ]);
+  ]) ?? locationHomePark?.homeParkName;
 
   return {
     homeParkId,
     homeParkName
   };
+}
+
+function readLocationHomePark(params: Record<string, unknown> | undefined): { homeParkId: string; homeParkName: string } | undefined {
+  const location = readLocationParam(params);
+  return location ? { homeParkId: location, homeParkName: location } : undefined;
+}
+
+function readLocationParam(params: Record<string, unknown> | undefined): string | undefined {
+  if (!params) {
+    return undefined;
+  }
+
+  const location = params.location;
+  if (typeof location !== "string") {
+    return undefined;
+  }
+
+  const trimmed = location.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function extractLoyaltyPoints(payload: Record<string, unknown>): number | undefined {
@@ -163,30 +188,17 @@ function readFirstString(payload: Record<string, unknown>, keys: string[]): stri
   return undefined;
 }
 
-function isAuthorizedPatchWebhookRequest(req: express.Request, expectedApiKey: string | undefined): boolean {
-  if (!expectedApiKey) {
-    return true;
-  }
-
-  const xApiKey = req.header("x-api-key");
-  if (typeof xApiKey === "string" && xApiKey === expectedApiKey) {
-    return true;
-  }
-
-  const patchApiKey = req.header("x-patch-webhook-api-key");
-  if (typeof patchApiKey === "string" && patchApiKey === expectedApiKey) {
-    return true;
-  }
-
-  const authorization = req.header("authorization");
-  if (typeof authorization === "string") {
-    const bearerPrefix = "bearer ";
-    if (authorization.toLowerCase().startsWith(bearerPrefix)) {
-      return authorization.slice(bearerPrefix.length).trim() === expectedApiKey;
+function extractRollerCustomerId(payload: Record<string, unknown>): string | undefined {
+  for (const key of ["roller_id", "rollerId", "customerId", "customer_id"]) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
     }
 
-    return authorization.trim() === expectedApiKey;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(Math.trunc(value));
+    }
   }
 
-  return false;
+  return undefined;
 }

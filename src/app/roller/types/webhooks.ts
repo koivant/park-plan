@@ -4,13 +4,10 @@ export interface NormalizedRollerBooking {
   bookingReference?: string;
   rollerCustomerId?: string;
   loyaltyEnrollmentAllowed?: boolean;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
   name?: string;
-  phone?: string;
   source?: string;
   channel?: string;
+  /** TODO(roller): Confirm the exact payload field for human-readable venue/park name, if provided. */
   venue?: string;
   parkId?: string;
   parkIds: string[];

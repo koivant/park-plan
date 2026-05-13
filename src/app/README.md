@@ -30,9 +30,9 @@ npm install
 
 ## Implementation Tracking
 
-- Keep the loyalty-app implementation TODO document in guides up to date at all times.
+- Keep the TODO document in guides up to date at all times.
 - Treat it as the source of truth for completed and remaining implementation work.
-- Keep the loyalty-app implementation values document in guides as the source of truth for config-like business values.
+- Keep the TECH-STACK and implementation plan documents in guides aligned with current code, schemas, and provider behavior.
 
 ## Run
 

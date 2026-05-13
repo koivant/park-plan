@@ -9,6 +9,7 @@
     "build": "tsc",
     "bootstrap:roller-webhooks": "tsx scripts/bootstrap-roller-webhooks.ts",
     "check:roller-webhooks": "tsx scripts/check-roller-webhooks.ts",
+    "check:roller-data-api": "tsx scripts/check-roller-data-api.ts",
     "check:patch-api": "tsx scripts/check-patch-api.ts",
     "docs:api": "tsx scripts/generate-openapi.ts",
     "docs:api:check": "tsx scripts/generate-openapi.ts --check",

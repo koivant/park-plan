@@ -21,12 +21,10 @@ export const rollerBookingWebhookPayload = {
     bookingReference: "booking-1",
     uniqueId: "booking-1",
     customerId: 123456,
-    email: "USER@example.com",
     customerFlags: ["LOYALTY_ENROLLMENT_ALLOWED"],
-    firstName: "Taylor",
-    lastName: "Example",
-    phone: "+358401234567",
-    venue: "SuperPark Vantaa",
+    name: "Taylor Example",
+    source: "VenueManager",
+    channel: "VenueManager",
     status: "confirmed",
     items: [
       {
@@ -65,8 +63,7 @@ export const bookingWebhookForFailurePayload = {
   data: {
     bookingReference: "booking-1",
     uniqueId: "booking-1",
-    customerId: 123456,
-    email: "user@example.com"
+    customerId: 123456
   }
 };
 
@@ -75,14 +72,10 @@ export const normalizedRollerBooking = {
   bookingReference: "booking-1",
   rollerCustomerId: "123456",
   loyaltyEnrollmentAllowed: true,
-  email: "user@example.com",
-  firstName: "Taylor",
-  lastName: "Example",
-  name: undefined,
-  phone: "+358401234567",
-  source: undefined,
-  channel: undefined,
-  venue: "SuperPark Vantaa",
+  name: "Taylor Example",
+  source: "VenueManager",
+  channel: "VenueManager",
+  venue: undefined,
   parkId: "69184",
   parkIds: ["69184"],
   bookingDate: "2026-05-02",

@@ -170,6 +170,37 @@ export async function upsertCustomer(db: Queryable, refs: CustomerRefs): Promise
   }
 }
 
+/** Marks a customer account as pending or verified. */
+export async function setCustomerPendingStatus(db: Queryable, customerId: string, pending: boolean): Promise<void> {
+  try {
+    await db.query(
+      `update customers
+       set pending = $2,
+           updated_at = now()
+       where id = $1`,
+      [customerId, pending]
+    );
+  } catch (error) {
+    if (!isCustomerIdentitySchemaMismatch(error)) {
+      throw error;
+    }
+
+    await ensureCustomerIdentityColumns(db);
+    await db.query(
+      `update customers
+       set pending = $2,
+           updated_at = now()
+       where id = $1`,
+      [customerId, pending]
+    );
+    console.info({
+      type: "customers_schema_behind",
+      action: "auto_migrated_and_retried_pending_update",
+      reason: "missing_customer_identity_columns"
+    });
+  }
+}
+
 async function upsertCustomerInternal(db: Queryable, refs: CustomerRefs): Promise<string> {
   const email = normalizeEmail(refs.email);
   const phone = normalizePhone(refs.phone);
@@ -185,11 +216,25 @@ async function upsertCustomerInternal(db: Queryable, refs: CustomerRefs): Promis
 
   const customerIdByEmail = email ? await findCustomerIdByEmail(db, email) : undefined;
   const customerIdByPhone = phone ? await findCustomerIdByPhone(db, phone) : undefined;
+  const customerIdByRollerCustomerId = rollerCustomerId ? await findCustomerIdByRollerCustomerId(db, rollerCustomerId) : undefined;
 
-  let customerId = customerIdByEmail ?? customerIdByPhone;
+  let customerId = customerIdByRollerCustomerId ?? customerIdByEmail ?? customerIdByPhone;
 
-  if (customerIdByEmail && customerIdByPhone && customerIdByEmail !== customerIdByPhone) {
-    customerId = await mergeCustomerAccounts(db, customerIdByEmail, customerIdByPhone);
+  const uniqueCandidateCustomerIds = Array.from(
+    new Set([customerIdByRollerCustomerId, customerIdByEmail, customerIdByPhone].filter((value): value is string => Boolean(value)))
+  );
+
+  if (uniqueCandidateCustomerIds.length > 1) {
+    let primaryCustomerId = uniqueCandidateCustomerIds[0];
+    for (const candidateCustomerId of uniqueCandidateCustomerIds) {
+      if (candidateCustomerId === primaryCustomerId) {
+        continue;
+      }
+
+      primaryCustomerId = await mergeCustomerAccounts(db, primaryCustomerId, candidateCustomerId);
+    }
+
+    customerId = primaryCustomerId;
   }
 
   if (!customerId) {
@@ -233,6 +278,7 @@ async function ensureCustomerIdentityColumns(db: Queryable): Promise<void> {
   await db.query("alter table customers add column if not exists home_park_name text");
   await db.query("alter table customers add column if not exists loyalty_points integer not null default 0");
   await db.query("alter table customers add column if not exists loyalty_target integer");
+  await db.query("alter table customers add column if not exists pending boolean not null default false");
   await db.query("alter table customers add column if not exists waiver_status text");
   await db.query("alter table customers add column if not exists waiver_signed_at timestamptz");
   await db.query("alter table customers add column if not exists waiver_expiry_date timestamptz");
@@ -372,6 +418,7 @@ function isCustomerIdentitySchemaMismatch(error: unknown): boolean {
     pgError.message.includes("home_park_name") ||
     pgError.message.includes("loyalty_points") ||
     pgError.message.includes("loyalty_target") ||
+    pgError.message.includes("pending") ||
     pgError.message.includes("waiver_status") ||
     pgError.message.includes("waiver_signed_at") ||
     pgError.message.includes("waiver_expiry_date") ||

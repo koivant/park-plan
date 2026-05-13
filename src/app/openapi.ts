@@ -84,8 +84,32 @@ const routes: RouteDoc[] = [
   },
   {
     method: "post",
+    path: "/webhooks/patch/{location}/contact-updated",
+    summary: "Consume a location-scoped PATCH contact update webhook and use location as the current home park.",
+    requestBody: patchContactUpdatedBodySchema,
+    responses: {
+      202: { description: "Webhook accepted.", schema: acceptedResponseSchema },
+      401: { description: "Webhook auth failed.", schema: errorResponseSchema },
+      400: { description: "Webhook payload is invalid.", schema: errorResponseSchema },
+      500: { description: "Unexpected server error.", schema: errorResponseSchema }
+    }
+  },
+  {
+    method: "post",
     path: "/webhooks/patch/reward-code",
     summary: "Consume a PATCH reward code webhook.",
+    requestBody: patchRewardCodeBodySchema,
+    responses: {
+      202: { description: "Webhook accepted.", schema: acceptedResponseSchema },
+      401: { description: "Webhook auth failed.", schema: errorResponseSchema },
+      400: { description: "Webhook payload is invalid.", schema: errorResponseSchema },
+      500: { description: "Unexpected server error.", schema: errorResponseSchema }
+    }
+  },
+  {
+    method: "post",
+    path: "/webhooks/patch/{location}/reward-code",
+    summary: "Consume a location-scoped PATCH reward code webhook and use location as the current home park.",
     requestBody: patchRewardCodeBodySchema,
     responses: {
       202: { description: "Webhook accepted.", schema: acceptedResponseSchema },
