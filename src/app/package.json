@@ -15,7 +15,7 @@
     "docs:api:check": "tsx scripts/generate-openapi.ts --check",
     "scheduler": "tsx watch scheduler.ts",
     "test": "vitest run tests",
-    "test:api": "vitest run tests/api.test.ts",
+    "test:api": "vitest run tests/api",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

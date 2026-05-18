@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createPatchApiClient } from "../patch/api-client.js";
+import { createPatchApiClient } from "../../patch/api-client.js";
 
 describe("PATCH API client", () => {
   it("sends Authorization and X-Account-Id headers", async () => {

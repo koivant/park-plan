@@ -21,10 +21,10 @@ create table if not exists customers (
 );
 create unique index if not exists customers_phone_key on customers(phone);
 
-create table if not exists otp_codes (
+create table if not exists magic_link_tokens (
   id uuid primary key default gen_random_uuid(),
-  email text not null,
-  otp_hash text not null,
+  customer_id uuid not null references customers(id),
+  token_hash text not null,
   expires_at timestamptz not null,
   consumed_at timestamptz,
   created_at timestamptz not null default now()
@@ -72,7 +72,8 @@ create table if not exists discount_codes (
   used_at timestamptz
 );
 
-create index if not exists otp_codes_email_idx on otp_codes(email);
+create index if not exists magic_link_tokens_token_hash_idx on magic_link_tokens(token_hash);
+create index if not exists magic_link_tokens_customer_created_idx on magic_link_tokens(customer_id, created_at);
 create index if not exists webhook_events_type_received_at_idx on webhook_events(type, received_at);
 create index if not exists bookings_customer_id_idx on bookings(customer_id);
 create index if not exists bookings_roller_customer_id_idx on bookings(roller_customer_id);

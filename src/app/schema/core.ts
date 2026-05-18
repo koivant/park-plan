@@ -6,13 +6,12 @@ export const emailSchema = z
   .toLowerCase()
   .refine((value) => value.includes("@"));
 
-export const otpRequestBodySchema = z.object({
+export const magicLinkRequestBodySchema = z.object({
   email: emailSchema
 });
 
-export const otpVerifyBodySchema = z.object({
-  email: emailSchema,
-  otp: z.string().trim().min(1)
+export const magicLinkConsumeQuerySchema = z.object({
+  token: z.string().trim().min(1)
 });
 
 export const accountQuerySchema = z.object({
@@ -40,13 +39,13 @@ export const healthResponseSchema = z.object({
   databaseTime: z.string().optional()
 });
 
-export const otpRequestResponseSchema = z.object({
+export const magicLinkRequestResponseSchema = z.object({
   ok: z.boolean(),
   message: z.string(),
-  demoOtp: z.string().optional()
+  demoMagicLink: z.string().url().optional()
 });
 
-export const otpVerifyResponseSchema = z.object({
+export const magicLinkConsumeResponseSchema = z.object({
   ok: z.boolean(),
   sessionToken: z.string()
 });

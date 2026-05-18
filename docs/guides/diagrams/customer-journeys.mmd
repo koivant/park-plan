@@ -4,7 +4,9 @@ sequenceDiagram
   participant SITE as SuperPark website
   participant PARK as Park or checkout
   participant VIEW as Loyalty View (Web or PWA)
-  participant EMAIL as Email
+  participant API as Loyalty App API
+  participant DB as App Database
+  participant MSG as PATCH or Email
 
   U->>SITE: Open SuperPark website
   SITE-->>U: Show loyalty entry point
@@ -18,9 +20,19 @@ sequenceDiagram
   end
 
   U->>VIEW: Enter email to access account
-  VIEW->>EMAIL: Send one-time code
-  EMAIL-->>U: Deliver one-time code
-  U->>VIEW: Enter code
+  VIEW->>API: Request magic link with normalized email
+  API->>DB: Look up customer by email
+  alt Account exists
+    API->>DB: Store hashed one-time token with expiry
+    API->>MSG: Send magic link email
+    MSG-->>U: Deliver magic link
+  else No matching account
+    API-->>VIEW: Return neutral response
+  end
+  U->>VIEW: Open magic link
+  VIEW->>API: Consume token
+  API->>DB: Validate token, expiry, and unused state
+  API-->>VIEW: Return session token
   VIEW-->>U: Show profile, stamp count, bookings, tickets, parks, waivers, and rewards
 
   U->>PARK: Buy park tickets

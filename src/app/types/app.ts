@@ -3,7 +3,8 @@ import type { Queryable } from "./database.js";
 /** Runtime configuration required by the HTTP app. */
 export interface AppConfig {
   nodeEnv: string;
-  otpTtlSeconds: number;
+  magicLinkTtlSeconds?: number;
+  loyaltyAppBaseUrl?: string;
   patchApiKey?: string;
   rollerApiBaseUrl?: string;
   rollerClientId?: string;
@@ -16,7 +17,7 @@ export interface CreateAppOptions {
   db?: Queryable;
   config?: AppConfig;
   now?: () => Date;
-  randomOtp?: () => string;
+  randomMagicToken?: () => string;
   randomUUID?: () => string;
 }
 
@@ -25,6 +26,6 @@ export interface AppDependencies {
   db: Queryable;
   config: AppConfig;
   now: () => Date;
-  randomOtp: () => string;
+  randomMagicToken: () => string;
   randomUUID: () => string;
 }

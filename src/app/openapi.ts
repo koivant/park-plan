@@ -5,10 +5,10 @@ import {
   accountResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
-  otpRequestBodySchema,
-  otpRequestResponseSchema,
-  otpVerifyBodySchema,
-  otpVerifyResponseSchema,
+  magicLinkConsumeQuerySchema,
+  magicLinkConsumeResponseSchema,
+  magicLinkRequestBodySchema,
+  magicLinkRequestResponseSchema,
   patchContactUpdatedBodySchema,
   patchRewardCodeBodySchema,
   rollerBookingBodySchema,
@@ -38,24 +38,24 @@ const routes: RouteDoc[] = [
   },
   {
     method: "post",
-    path: "/auth/otp/request",
-    summary: "Create an email OTP.",
-    requestBody: otpRequestBodySchema,
+    path: "/auth/magic-link/request",
+    summary: "Create an email magic link.",
+    requestBody: magicLinkRequestBodySchema,
     responses: {
-      200: { description: "OTP created.", schema: otpRequestResponseSchema },
+      200: { description: "Magic link accepted.", schema: magicLinkRequestResponseSchema },
       400: { description: "Email is missing or invalid.", schema: errorResponseSchema },
       500: { description: "Unexpected server error.", schema: errorResponseSchema }
     }
   },
   {
-    method: "post",
-    path: "/auth/otp/verify",
-    summary: "Verify an email OTP.",
-    requestBody: otpVerifyBodySchema,
+    method: "get",
+    path: "/auth/magic-link",
+    summary: "Consume an email magic link.",
+    query: magicLinkConsumeQuerySchema,
     responses: {
-      200: { description: "OTP verified.", schema: otpVerifyResponseSchema },
-      400: { description: "Email or OTP is missing.", schema: errorResponseSchema },
-      401: { description: "OTP is invalid.", schema: errorResponseSchema },
+      200: { description: "Magic link consumed.", schema: magicLinkConsumeResponseSchema },
+      400: { description: "Token is missing.", schema: errorResponseSchema },
+      401: { description: "Magic link is invalid.", schema: errorResponseSchema },
       500: { description: "Unexpected server error.", schema: errorResponseSchema }
     }
   },

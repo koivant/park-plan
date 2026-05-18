@@ -1,37 +1,55 @@
-import type express from "express";
+import { httpConfig } from "./config.js";
 import { createOpenApiDocument } from "../openapi.js";
-import { accountQuerySchema, joinSubmissionSchema, otpRequestBodySchema, otpVerifyBodySchema } from "../schema/core.js";
-import { readAccountState } from "../services/account-store.js";
+import { accountQuerySchema, joinSubmissionSchema, magicLinkConsumeQuerySchema, magicLinkRequestBodySchema } from "../schema/core.js";
+import { readAccountState, readAccountStateByCustomerId } from "../services/account-store.js";
 import { findCustomerIdByEmail, findCustomerIdByPhone, setCustomerPendingStatus, upsertCustomer } from "../services/customer-store.js";
-import type { AppDependencies } from "../types/app.js";
+import { hashToken } from "../utils/crypto.js";
 import { createDocsHtml } from "../utils/docs.js";
-import { hashOtp } from "../utils/crypto.js";
-
-interface RegisterCoreRoutesOptions extends AppDependencies {
-  app: express.Application;
-}
+import type { RegisterCoreRoutesOptions } from "./types/core-routes.js";
+import { clearSessionCookie, readCookie, setSessionCookie } from "./utils/cookies.js";
+import {
+  createAccountViewHtml,
+  createJoinFormHtml,
+  createJoinResultHtml,
+  createLoginFormHtml,
+  createLoginResultHtml,
+  createMockHomeParkHtml
+} from "./utils/core-pages.js";
+import { createMockHomeParkRedirect } from "./utils/home-park.js";
+import { createMagicLinkUrl, logMockEmail } from "./utils/magic-link.js";
+import { wantsHtml } from "./utils/request.js";
+import { escapeHtml } from "./utils/html.js";
 
 /** Registers non-integration HTTP routes such as docs, health, auth, and account. */
 export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
-  const { app, db, config, now, randomOtp, randomUUID } = options;
+  const { app, db, config, now, randomMagicToken, randomUUID } = options;
+  const sessions = new Map<string, string>();
 
-  app.get("/openapi/openapi.json", (_req, res) => {
+  app.get(httpConfig.routes.root, (_req, res) => {
+    res.redirect(httpConfig.routes.login);
+  });
+
+  app.get(httpConfig.routes.openApiJson, (_req, res) => {
     res.json(createOpenApiDocument());
   });
 
-  app.get("/docs", (_req, res) => {
-    res.type("html").send(createDocsHtml("/openapi/openapi.json"));
+  app.get(httpConfig.routes.docs, (_req, res) => {
+    res.type("html").send(createDocsHtml(httpConfig.routes.openApiJson));
   });
 
-  app.get("/join", (_req, res) => {
+  app.get(httpConfig.routes.join, (_req, res) => {
     res.type("html").send(createJoinFormHtml());
   });
 
-  app.post("/join", async (req, res, next) => {
+  app.get(httpConfig.routes.login, (_req, res) => {
+    res.type("html").send(createLoginFormHtml());
+  });
+
+  app.post(httpConfig.routes.join, async (req, res, next) => {
     try {
       const submission = joinSubmissionSchema.safeParse(req.body);
       if (!submission.success) {
-        res.status(400).type("html").send(createJoinResultHtml("Invalid form input. Email is required."));
+        res.status(400).type("html").send(createJoinResultHtml(httpConfig.messages.invalidJoinInput));
         return;
       }
 
@@ -42,7 +60,7 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
         res
           .status(200)
           .type("html")
-          .send(createJoinResultHtml("These contact details have already been signed up."));
+          .send(createJoinResultHtml(httpConfig.messages.duplicateSignup));
         return;
       }
 
@@ -55,7 +73,7 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
 
       res.type("html").send(
         createJoinResultHtml(
-          `Account created. Customer id: ${escapeHtml(customerId)}. Status: pending email verification.`
+          `Account created. Customer id: ${escapeHtml(customerId)}. Status: ${httpConfig.messages.pendingEmailVerification}.`
         )
       );
     } catch (error) {
@@ -63,7 +81,7 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
     }
   });
 
-  app.get("/health", async (_req, res, next) => {
+  app.get(httpConfig.routes.health, async (_req, res, next) => {
     try {
       const result = await db.query<{ now: Date }>("select now()");
       res.json({ ok: true, databaseTime: result.rows[0]?.now });
@@ -72,75 +90,155 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
     }
   });
 
-  app.post("/auth/otp/request", async (req, res, next) => {
+  app.post(httpConfig.routes.magicLinkRequest, async (req, res, next) => {
     try {
-      const body = otpRequestBodySchema.safeParse(req.body);
+      const body = magicLinkRequestBodySchema.safeParse(req.body);
       if (!body.success) {
-        res.status(400).json({ error: "email_required" });
+        res.status(400).json({ error: httpConfig.errors.emailRequired });
         return;
       }
 
-      const otp = randomOtp();
-      const otpHash = hashOtp(otp);
-      const expiresAt = new Date(now().getTime() + config.otpTtlSeconds * 1000);
+      const response = {
+        ok: true,
+        message: httpConfig.messages.accountMaybeSent
+      };
+      const customerId = await findCustomerIdByEmail(db, body.data.email);
+      if (!customerId) {
+        if (wantsHtml(req)) {
+          res.type("html").send(createLoginResultHtml(response.message));
+          return;
+        }
+
+        res.json(response);
+        return;
+      }
+
+      const token = randomMagicToken();
+      const tokenHash = hashToken(token);
+      const expiresAt = new Date(now().getTime() + (config.magicLinkTtlSeconds ?? httpConfig.magicLink.ttlSeconds) * 1000);
 
       await db.query(
-        `insert into otp_codes (email, otp_hash, expires_at)
+        `insert into magic_link_tokens (customer_id, token_hash, expires_at)
          values ($1, $2, $3)`,
-        [body.data.email, otpHash, expiresAt]
+        [customerId, tokenHash, expiresAt]
       );
 
+      const magicLink = createMagicLinkUrl(config.loyaltyAppBaseUrl, token);
+      logMockEmail(body.data.email, magicLink);
+
+      if (wantsHtml(req)) {
+        res.type("html").send(createLoginResultHtml(httpConfig.messages.checkDockerLogs));
+        return;
+      }
+
       res.json({
-        ok: true,
-        message: "OTP created for demo environment",
-        demoOtp: config.nodeEnv === "development" ? otp : undefined
+        ...response,
+        demoMagicLink: config.nodeEnv === "development" ? magicLink : undefined
       });
     } catch (error) {
       next(error);
     }
   });
 
-  app.post("/auth/otp/verify", async (req, res, next) => {
+  app.get(httpConfig.routes.magicLinkConsume, async (req, res, next) => {
     try {
-      const body = otpVerifyBodySchema.safeParse(req.body);
-      if (!body.success) {
-        res.status(400).json({ error: "email_and_otp_required" });
+      const query = magicLinkConsumeQuerySchema.safeParse(req.query);
+      if (!query.success) {
+        res.status(400).json({ error: httpConfig.errors.tokenRequired });
         return;
       }
 
-      const otpHash = hashOtp(body.data.otp);
-      const result = await db.query<{ id: string }>(
-        `update otp_codes
+      const tokenHash = hashToken(query.data.token);
+      const result = await db.query<{ id: string; customer_id: string }>(
+        `update magic_link_tokens
          set consumed_at = now()
          where id = (
-           select id from otp_codes
-           where email = $1
-             and otp_hash = $2
+           select id from magic_link_tokens
+           where token_hash = $1
              and consumed_at is null
              and expires_at > now()
            order by created_at desc
            limit 1
          )
-         returning id`,
-        [body.data.email, otpHash]
+         returning id, customer_id`,
+        [tokenHash]
       );
 
       if (result.rowCount === 0) {
-        res.status(401).json({ error: "invalid_otp" });
+        res.status(401).json({ error: httpConfig.errors.invalidMagicLink });
         return;
       }
 
-      res.json({ ok: true, sessionToken: randomUUID() });
+      const sessionToken = randomUUID();
+      const customerId = result.rows[0]?.customer_id;
+      if (customerId) {
+        sessions.set(sessionToken, customerId);
+      }
+
+      setSessionCookie(res, sessionToken);
+
+      if (wantsHtml(req)) {
+        res.redirect(httpConfig.routes.accountView);
+        return;
+      }
+
+      res.json({ ok: true, sessionToken });
     } catch (error) {
       next(error);
     }
   });
 
-  app.get("/account", async (req, res, next) => {
+  app.get(httpConfig.routes.accountView, async (req, res, next) => {
+    try {
+      const sessionToken = readCookie(req, httpConfig.cookies.sessionName);
+      const customerId = sessionToken ? sessions.get(sessionToken) : undefined;
+      if (!sessionToken || !customerId) {
+        clearSessionCookie(res);
+        res.redirect(httpConfig.routes.login);
+        return;
+      }
+
+      const account = await readAccountStateByCustomerId(db, customerId);
+      if (!account) {
+        sessions.delete(sessionToken);
+        clearSessionCookie(res);
+        res.redirect(httpConfig.routes.login);
+        return;
+      }
+
+      res.type("html").send(createAccountViewHtml(account));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post(httpConfig.routes.logout, async (req, res, next) => {
+    try {
+      const sessionToken = readCookie(req, httpConfig.cookies.sessionName);
+      const customerId = sessionToken ? sessions.get(sessionToken) : undefined;
+      const account = customerId ? await readAccountStateByCustomerId(db, customerId) : undefined;
+
+      if (sessionToken) {
+        sessions.delete(sessionToken);
+      }
+
+      clearSessionCookie(res);
+      res.redirect(createMockHomeParkRedirect(account));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get(httpConfig.routes.mockHomePark, (req, res) => {
+    const parkName = typeof req.query.parkName === "string" && req.query.parkName ? req.query.parkName : httpConfig.defaults.mockHomeParkName;
+    res.type("html").send(createMockHomeParkHtml(parkName));
+  });
+
+  app.get(httpConfig.routes.account, async (req, res, next) => {
     try {
       const query = accountQuerySchema.safeParse(req.query);
       if (!query.success) {
-        res.status(400).json({ error: "email_required" });
+        res.status(400).json({ error: httpConfig.errors.emailRequired });
         return;
       }
 
@@ -149,64 +247,4 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
       next(error);
     }
   });
-}
-
-function createJoinFormHtml(): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Join Loyalty Demo</title>
-  <style>
-    :root { color-scheme: light; }
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; margin: 0; background: #f4f6f8; color: #17212b; }
-    main { max-width: 640px; margin: 32px auto; background: #fff; border: 1px solid #dde3ea; border-radius: 12px; padding: 20px; }
-    h1 { font-size: 1.4rem; margin: 0 0 8px; }
-    p { margin: 0 0 16px; color: #45576a; }
-    form { display: grid; gap: 10px; }
-    label { display: grid; gap: 4px; font-size: 0.95rem; }
-    input { font: inherit; padding: 10px; border: 1px solid #c5ced8; border-radius: 8px; }
-    button { margin-top: 8px; font: inherit; padding: 10px 14px; border: 0; border-radius: 8px; background: #0f5bb8; color: #fff; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Join Loyalty Program</h1>
-    <p>Sign up with your contact details.</p>
-    <form method="post" action="/join">
-      <label>Name <input name="name" type="text" autocomplete="name"></label>
-      <label>Email <input name="email" type="email" required autocomplete="email"></label>
-      <label>Phone <input name="phone" type="tel" autocomplete="tel"></label>
-      <button type="submit">Create Account</button>
-    </form>
-  </main>
-</body>
-</html>`;
-}
-
-function createJoinResultHtml(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Join Result</title>
-</head>
-<body>
-  <main>
-    <p>${message}</p>
-    <p><a href="/join">Back to form</a></p>
-  </main>
-</body>
-</html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#39;");
 }

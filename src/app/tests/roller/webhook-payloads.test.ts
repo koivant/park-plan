@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   createWaiverProjectionEntries,
   normalizeRollerBookingPayload
-} from "../roller/utils/webhook-payloads.js";
+} from "../../roller/utils/webhook-payloads.js";
 import {
   normalizedRollerBooking,
   rollerBookingWebhookPayload,
   rollerSignedWaiverProjectionEntries,
   rollerSignedWaiverWebhookPayload
-} from "./mocks/roller.js";
+} from "../mocks/roller.js";
 
 describe("ROLLER webhook utils", () => {
   it("normalizes booking detail payloads used by the loyalty account projection", () => {

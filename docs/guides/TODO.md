@@ -18,10 +18,13 @@ Validate the minimal loyalty app flow end to end: gather ROLLER booking data, cr
 - PATCH `reward-code` stores one or more active discount codes for the matched email.
 - Demo join form exists at `/join`.
 - Demo join submission creates a pending customer and prevents duplicate signup by email or phone.
-- OTP request and verify endpoints exist for demo customer validation.
+- Magic-link request and consume endpoints exist for customer login.
+- Local `/login` and `/account-view` pages exist for Docker magic-link testing.
+- Development magic-link requests log a mock email with the login link.
+- Local logout clears the session and redirects to a mock home park front page.
 - `GET /account` returns the current customer projection by email.
 - Account projection includes profile, loyalty points, loyalty target, home park, visited parks, bookings, waiver status, and discount codes.
-- PostgreSQL schema exists for customers, OTP codes, webhook events, bookings, and discount codes.
+- PostgreSQL schema exists for customers, magic-link tokens, webhook events, bookings, and discount codes.
 - OpenAPI JSON and Swagger UI are generated from route schemas.
 
 ## MVP Next
@@ -35,6 +38,7 @@ Validate the minimal loyalty app flow end to end: gather ROLLER booking data, cr
 - Use the dynamic PATCH webhook location segment as the MVP park sync key for PATCH-originated updates. Current booking webhook path also supports `parkId`; PATCH credentials are still global.
 - Build or connect the customer-facing web/PWA account view to `GET /account`.
 - Ensure the view clearly shows stamp count, target, bookings/tickets, home park, visited parks, and available reward codes.
+- Connect production magic-link delivery through PATCH if dynamic one-time links are supported; otherwise use a transactional email provider.
 - Add one end-to-end integration test for the MVP path.
 
 ## Keep Simple For MVP
@@ -44,8 +48,16 @@ Validate the minimal loyalty app flow end to end: gather ROLLER booking data, cr
 - Use manual refresh for the customer view.
 - Use targeted backfill only when a webhook does not contain enough customer data.
 
+## Magic Link Hardening
+- Persist sessions in PostgreSQL instead of the current in-memory session map.
+- Store only hashed session tokens, with expiry and revocation state.
+- Set the session cookie with `Secure` in HTTPS environments.
+- Tie account reads to the session `customer_id`; do not rely on `GET /account?email=...` for authenticated customer access.
+- Add rate limiting for magic-link requests.
+- Stop logging raw magic links outside local development.
+- Connect production magic-link delivery through PATCH or a transactional email provider.
+
 ## Later
-- Replace demo OTP behavior with a real delivery provider.
 - Persist and enforce session tokens for account reads.
 - Add inbound webhook authentication checks for ROLLER and PATCH routes.
 - Add venue-scoped join routes if multi-location rollout requires them.

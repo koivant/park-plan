@@ -6,7 +6,7 @@ The app is a Node.js and TypeScript service using Express 5. Source files use EC
 ## API Layer
 Express registers three route groups:
 
-- Core routes: health, docs, join form, OTP, and account projection.
+- Core routes: health, docs, join form, magic-link login, local account web view, logout, and account projection.
 - PATCH webhooks: contact updates and reward-code updates.
 - ROLLER webhooks: booking and signed-waiver updates.
 
@@ -19,7 +19,7 @@ Zod validates request bodies, query parameters, webhook envelopes, and account r
 PostgreSQL is the implemented database. The schema defines:
 
 - `customers`: normalized contact identity, PATCH and ROLLER ids, home park, loyalty state, pending status, and waiver state.
-- `otp_codes`: hashed one-time codes, expiry, and consumption state.
+- `magic_link_tokens`: hashed one-time login tokens, customer linkage, expiry, and consumption state.
 - `webhook_events`: raw provider payloads with optional provider event metadata.
 - `bookings`: normalized ROLLER booking projection.
 - `discount_codes`: PATCH-issued reward codes and local used-state fields.
@@ -46,7 +46,9 @@ The core data flow is:
 1. ROLLER booking webhook writes booking and customer projection to PostgreSQL.
 2. ROLLER/PATCH native sync updates PATCH contact and stamp state.
 3. PATCH webhook writes loyalty points, target, location-derived home park, and reward code data to PostgreSQL.
-4. Web/PWA reads `GET /account` and shows the local projection.
+4. Customer requests a magic link by email, opens the link, and the app validates the one-time token.
+5. The local web view can store the session cookie, render `/account-view`, and log out to a mock home park page.
+6. Web/PWA reads `GET /account` and shows the local projection.
 
 The app should avoid live provider reads during normal customer page load. Use provider reads only for targeted backfill or validation.
 

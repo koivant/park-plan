@@ -2,6 +2,24 @@ import type { Queryable } from "../types/database.js";
 
 /** Reads the public account response for a given email. */
 export async function readAccountState(db: Queryable, email: string): Promise<Record<string, unknown>> {
+  const account = await readAccountStateBy(db, "c.email = $1", email, email);
+  if (!account) {
+    throw new Error("account_default_unavailable");
+  }
+  return account;
+}
+
+/** Reads the public account response for a given customer id. */
+export async function readAccountStateByCustomerId(db: Queryable, customerId: string): Promise<Record<string, unknown> | undefined> {
+  return readAccountStateBy(db, "c.id = $1", customerId);
+}
+
+async function readAccountStateBy(
+  db: Queryable,
+  whereClause: string,
+  value: string,
+  defaultEmail?: string
+): Promise<Record<string, unknown> | undefined> {
   const account = await db.query(
     `select c.email,
             c.loyalty_points,
@@ -96,23 +114,29 @@ export async function readAccountState(db: Queryable, email: string): Promise<Re
          group by b.park_id
        ) v
      ) vp on true
-     where c.email = $1`,
-    [email]
+     where ${whereClause}`,
+    [value]
   );
 
-  return (
-    account.rows[0] ?? {
-      email,
-      loyalty_points: 0,
-      loyalty_target: null,
-      home_park: null,
-      visited_parks: [],
-      profile: { email },
-      upcoming_bookings: [],
-      waivers: [],
-      discount_codes: []
-    }
-  );
+  if (account.rows[0]) {
+    return account.rows[0];
+  }
+
+  if (defaultEmail === undefined) {
+    return undefined;
+  }
+
+  return {
+    email: defaultEmail,
+    loyalty_points: 0,
+    loyalty_target: null,
+    home_park: null,
+    visited_parks: [],
+    profile: { email: defaultEmail },
+    upcoming_bookings: [],
+    waivers: [],
+    discount_codes: []
+  };
 }
 
 /** Finds a customer id by booking id. */

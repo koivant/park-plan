@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { extractPatchRewardCodes } from "../patch/utils/reward-codes.js";
-import { patchRewardCodePayloads } from "./mocks/patch.js";
+import { extractPatchRewardCodes } from "../../patch/utils/reward-codes.js";
+import { patchRewardCodePayloads } from "../mocks/patch.js";
 
 describe("PATCH webhook utils", () => {
   it("extracts reward codes from discount_code", () => {

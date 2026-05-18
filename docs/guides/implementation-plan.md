@@ -19,6 +19,15 @@ Event-driven enrollment is also supported when provider events contain enough id
 
 If a booking webhook has `customerId` but no email or phone, the app can request ROLLER guest detail when credentials are configured. This is the current targeted backfill mechanism for missing booking contact data.
 
+## Account Access
+Customer login uses a magic link. The customer enters email, the app normalizes it, and the app looks up a local customer by email only.
+
+If a matching customer exists, the app creates an opaque one-time token, stores only its hash in `magic_link_tokens`, links it to `customer_id`, sets a short expiry, and sends the raw token as a magic link. PATCH may send the email if it can accept the dynamic link; otherwise use a transactional email provider.
+
+If no customer exists for the email, the app returns the same neutral response and does not create a token. When the customer opens the link, the app validates the token hash, expiry, and unused state, consumes the token, and returns a session token.
+
+For local Docker testing, the app logs a mock email containing the magic link. Browser users are redirected to `/account-view`, which shows profile, stamps, home park, bookings, waivers, and reward codes. Logout clears the local session and redirects to a mock home park front page.
+
 ## Duplicate Prevention
 For MVP, duplicate prevention should stay simple:
 
@@ -92,6 +101,8 @@ Do not add complex personalization, push updates, or offer targeting until the M
 - Confirm PATCH receives the ROLLER booking through native sync.
 - Confirm PATCH updates loyalty/stamp fields.
 - Confirm PATCH webhook reaches the app.
+- Confirm magic-link request finds an existing customer by normalized email only.
+- Confirm the magic-link token opens the expected account and cannot be reused.
 - Confirm `GET /account` shows customer profile, booking/ticket data, stamp state, and reward code data when applicable.
 - Confirm a second booking from the same or another park updates the same customer instead of creating a duplicate.
 - Confirm the web/PWA view presents the same projection clearly.
@@ -99,7 +110,6 @@ Do not add complex personalization, push updates, or offer targeting until the M
 ## Later Hardening
 Security and operational hardening should follow the MVP proof:
 
-- Real OTP delivery.
 - Persisted sessions and account-read authorization.
 - Inbound webhook authentication.
 - Idempotent webhook processing.

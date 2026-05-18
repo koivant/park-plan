@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { openApiOutputPath } from "../scripts/generate-openapi.js";
+import { openApiOutputPath } from "../../scripts/generate-openapi.js";
 
 describe("OpenAPI generation", () => {
   it("writes the generated document under src/app/openapi", () => {
@@ -10,7 +10,7 @@ describe("OpenAPI generation", () => {
   });
 
   it("uses a Node 24 Docker base image", () => {
-    const dockerfilePath = resolve(import.meta.dirname, "../Dockerfile");
+    const dockerfilePath = resolve(import.meta.dirname, "../../Dockerfile");
     const dockerfile = readFileSync(dockerfilePath, "utf8");
 
     expect(dockerfile).toContain("FROM node:24-alpine");

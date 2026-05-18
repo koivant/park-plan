@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getActiveRollerWebhookDetails } from "../roller/webhook-inspector.js";
-import type { RollerWebhookRecord } from "../roller/types.js";
+import { getActiveRollerWebhookDetails } from "../../roller/webhook-inspector.js";
+import type { RollerWebhookRecord } from "../../roller/types.js";
 
 describe("ROLLER webhook inspector", () => {
   it("returns active webhook details when available", () => {

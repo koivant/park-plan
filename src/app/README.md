@@ -44,6 +44,7 @@ Set `.env`:
 
 ```env
 DATABASE_URL=postgres://loyalty:loyalty@localhost:5432/loyalty
+MAGIC_LINK_TTL_SECONDS=600
 ```
 
 Start development server:
@@ -83,3 +84,13 @@ Tests:
 cd src/app
 npm run test:api
 ```
+
+## Local Magic-Link Login Test
+
+With Docker Compose running, open:
+
+```text
+http://localhost:3000/login
+```
+
+Enter an existing customer email. The API container logs a mock email event with `magicLink`; open that URL in the browser. After login, `/account-view` shows the minimal customer account page. Use `Log out` to clear the local session and redirect to the mock home park front page.

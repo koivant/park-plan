@@ -17,14 +17,14 @@ export function createApp(options: CreateAppOptions = {}): express.Application {
   const db = options.db ?? defaultDb;
   const config = options.config ?? defaultConfig;
   const now = options.now ?? (() => new Date());
-  const randomOtp = options.randomOtp ?? (() => String(crypto.randomInt(100000, 999999)));
+  const randomMagicToken = options.randomMagicToken ?? (() => crypto.randomBytes(32).toString("base64url"));
   const randomUUID = options.randomUUID ?? (() => crypto.randomUUID());
 
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: false }));
   app.use(createRequestLoggingMiddleware());
 
-  registerCoreRoutes({ app, db, config, now, randomOtp, randomUUID });
+  registerCoreRoutes({ app, db, config, now, randomMagicToken, randomUUID });
   registerPatchWebhookRoutes({ app, db });
   const rollerGuestLookup =
     config.rollerApiBaseUrl && config.rollerClientId && config.rollerClientSecret

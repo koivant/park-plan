@@ -4,7 +4,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   apiPort: Number(process.env.API_PORT ?? 3000),
   databaseUrl: process.env.DATABASE_URL ?? "postgres://loyalty:loyalty@localhost:5432/loyalty",
-  otpTtlSeconds: Number(process.env.OTP_TTL_SECONDS ?? 600),
+  magicLinkTtlSeconds: Number(process.env.MAGIC_LINK_TTL_SECONDS ?? 600),
   schedulerIntervalMs: Number(process.env.SCHEDULER_INTERVAL_MS ?? 300_000),
   patchApiBaseUrl: process.env.PATCH_API_BASE_URL ?? "",
   patchApiKey: process.env.PATCH_API_KEY ?? "",
