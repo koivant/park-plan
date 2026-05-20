@@ -1,0 +1,14 @@
+flowchart LR
+  A["Loyalty member opens the web app"] --> B["Member enters email address"]
+  B --> C["Member receives login email"]
+  C --> D["Member clicks the magic link"]
+  D --> E["Member is logged in"]
+  E --> F["Member sees loyalty account"]
+
+  classDef start fill:#e8f3ff,stroke:#2563eb,color:#111827;
+  classDef action fill:#f8fafc,stroke:#64748b,color:#111827;
+  classDef success fill:#ecfdf5,stroke:#059669,color:#111827;
+
+  class A start;
+  class B,C,D,E action;
+  class F success;

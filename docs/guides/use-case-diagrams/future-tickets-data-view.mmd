@@ -1,0 +1,19 @@
+flowchart LR
+  A["Member buys tickets in ROLLER"] --> B["ROLLER sends booking data to PATCH"]
+  B --> C["PATCH sends booking data to Loyalty App"]
+  C --> D["Loyalty App stores the member tickets"]
+  D --> E["Member logs in to Loyalty App"]
+  E --> F["Loyalty App reads valid future tickets"]
+  F --> G{"Any valid future tickets?"}
+  G -- "Yes" --> H["Loyalty App shows upcoming tickets"]
+  G -- "No" --> I["Loyalty App shows no upcoming tickets"]
+
+  classDef event fill:#e8f3ff,stroke:#2563eb,color:#111827;
+  classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
+  classDef system fill:#f8fafc,stroke:#64748b,color:#111827;
+  classDef success fill:#ecfdf5,stroke:#059669,color:#111827;
+
+  class A event;
+  class G decision;
+  class B,C,D,E,F,I system;
+  class H success;

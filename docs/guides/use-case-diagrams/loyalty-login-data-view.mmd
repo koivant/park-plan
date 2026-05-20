@@ -1,0 +1,19 @@
+flowchart LR
+  A["Member enters email in Loyalty App"] --> B["Loyalty App checks for a matching member"]
+  B --> C{"Member found?"}
+  C -- "No" --> D["A message is shown"]
+  C -- "Yes" --> E["Loyalty App creates a one-time login link"]
+  E --> F["PATCH sends the login email"]
+  F --> G["Member clicks the link"]
+  G --> H["Loyalty App confirms the link is valid"]
+  H --> I["Loyalty App opens the member account"]
+
+  classDef event fill:#e8f3ff,stroke:#2563eb,color:#111827;
+  classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
+  classDef system fill:#f8fafc,stroke:#64748b,color:#111827;
+  classDef success fill:#ecfdf5,stroke:#059669,color:#111827;
+
+  class A event;
+  class C decision;
+  class B,D,E,F,G,H system;
+  class I success;

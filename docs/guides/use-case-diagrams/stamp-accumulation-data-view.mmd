@@ -1,0 +1,26 @@
+flowchart LR
+  A["Member buys admission tickets in ROLLER"] --> B["ROLLER sends purchase data to PATCH"]
+  B --> C["PATCH sends purchase data to Loyalty App"]
+  C --> D["Loyalty App checks the customer is a loyalty member"]
+  D --> E{"Is the customer a member?"}
+  E -- "No" --> F["No loyalty stamps are added"]
+  E -- "Yes" --> G["Loyalty App counts admission tickets"]
+  G --> H["Loyalty App adds country-level stamps"]
+  H --> I{"Reward reached?"}
+  I -- "No" --> J["Member stamp balance is updated"]
+  I -- "Yes" --> K["Loyalty App creates reward code for home park ROLLER"]
+  K --> L["Loyalty App sends reward code to PATCH"]
+  L --> M["PATCH sends reward message to member"]
+  M --> N["Member redeems code in home park ROLLER checkout"]
+  N --> O["ROLLER confirms code was used"]
+  O --> P["Loyalty App marks reward code as used"]
+
+  classDef event fill:#e8f3ff,stroke:#2563eb,color:#111827;
+  classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
+  classDef system fill:#f8fafc,stroke:#64748b,color:#111827;
+  classDef success fill:#ecfdf5,stroke:#059669,color:#111827;
+
+  class A event;
+  class E,I decision;
+  class B,C,D,F,G,H,K,L,M,N,O system;
+  class J,P success;

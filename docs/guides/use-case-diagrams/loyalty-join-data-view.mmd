@@ -1,0 +1,24 @@
+flowchart LR
+  A["SuperPark visit happens"] --> B["PATCH sends visit data to Loyalty App"]
+  A --> C["ROLLER checkout or on-site opt-in may happen"]
+  B --> D{"Already joined?"}
+  C --> D
+  D -- "Yes" --> E["Loyalty App keeps the customer active"]
+  D -- "No" --> F{"Opted in during checkout or on site?"}
+  F -- "Yes" --> G["Loyalty App stores loyalty consent"]
+  F -- "No" --> H["Loyalty App asks PATCH to send invite email"]
+  H --> I["PATCH sends the join email"]
+  I --> J["Customer clicks the link"]
+  J --> K["Loyalty App stores loyalty consent"]
+  G --> L["PATCH can use the updated loyalty status"]
+  K --> L
+
+  classDef event fill:#e8f3ff,stroke:#2563eb,color:#111827;
+  classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
+  classDef system fill:#f8fafc,stroke:#64748b,color:#111827;
+  classDef consent fill:#ecfdf5,stroke:#059669,color:#111827;
+
+  class A event;
+  class D,F decision;
+  class B,C,E,H,I,J,L system;
+  class G,K consent;
