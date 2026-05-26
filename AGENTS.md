@@ -30,6 +30,51 @@ Documentation rules for this repo:
 - Payment decision handling:
   - Do not assume ROLLER Payments as global default.
   - Frame payment selection as a country-by-country decision.
+- Node Express app structure:
+  - Treat `src/app` as the TypeScript Express application root.
+  - Prefer the existing logical layout over introducing a new architecture:
+    - `server.ts`: process entry point.
+    - `app.ts`: Express app composition.
+    - `config.ts`: environment and runtime configuration.
+    - `db.ts`: database connection setup.
+    - `http`: route registration, HTTP-specific helpers, request/response concerns.
+    - `services`: shared business logic and persistence-facing services.
+    - `roller` and `patch`: integration-specific clients, webhook handlers, schemas, types, and utilities.
+    - `schema`: shared validation schemas.
+    - `types`: shared TypeScript types.
+    - `utils`: generic utilities with no domain ownership.
+    - `scripts`: operational scripts.
+    - `tests`: tests grouped by API area, integration, helper, or shared module.
+  - When adding Express code, keep request flow easy to follow:
+    - Register routes in `http` or in the relevant integration `handlers` folder.
+    - Keep HTTP parsing, cookies, redirects, status codes, and response formatting near route code.
+    - Put reusable business rules in `services`.
+    - Put external service calls in the owning integration folder.
+    - Put validation schemas near the domain or integration that owns them; use shared `schema` only when reused broadly.
+    - Put reusable TypeScript types near the owning domain; use shared `types` only when reused broadly.
+  - Do not add generic `controllers`, `models`, or `repositories` folders just because they are common in Express projects.
+    - Add a new layer only when it removes real duplication or clarifies a growing boundary.
+    - Keep simple route handlers inline or close to their registration until extraction is clearly useful.
+  - Naming conventions:
+    - Use kebab-case filenames.
+    - Prefer explicit names such as `register-*-routes.ts`, `register-*-webhooks.ts`, `*-client.ts`, `*-store.ts`, and `*-schema.ts`.
+    - Keep test filenames aligned with the module or behavior under test.
+  - Testing guidance:
+    - Add or update tests before implementation changes.
+    - Place API behavior tests under `tests/api`.
+    - Place integration-specific tests under `tests/roller` or `tests/patch`.
+    - Place reusable test helpers under `tests/helpers` and mocks under `tests/mocks`.
+  - Use this project-specific prompt when evaluating future folder-structure changes:
+    - Act as a senior Node.js, TypeScript, and Express architect.
+    - Recommend folder structure changes for this project only when they improve standardness, logic, scalability, or maintainability.
+    - Prefer common Express conventions, but preserve the current `src/app` structure unless a change has a clear payoff.
+    - Avoid unnecessary abstraction and do not reorganize files as a side task.
+    - Explain where routes, handlers, services, schemas, types, middleware-like utilities, configuration, scripts, tests, and external integrations should live.
+    - Include a short folder tree only when proposing a structure change.
+    - Include rules of thumb for where new code should go.
+    - Mention common mistakes to avoid.
+    - Show one request flow from route registration to handler/service/integration only when needed.
+    - Keep recommendations direct, pragmatic, and implementation-focused.
 - General execution rules:
   - Use test-driven development for developed code:
     - Add or update a failing test that defines the expected behavior before changing implementation code.
